@@ -1,5 +1,27 @@
 const swaggerJsdoc = require("swagger-jsdoc");
 
+// Determine the server URL dynamically
+const getServers = () => {
+  const isDevelopment = process.env.NODE_ENV !== "production";
+
+  const servers = [
+    {
+      url: "http://localhost:3001",
+      description: "Development Server",
+    },
+  ];
+
+  // Add production server if in production environment
+  if (!isDevelopment) {
+    servers.push({
+      url: "https://be-monitoring-laka.vercel.app",
+      description: "Production Server",
+    });
+  }
+
+  return servers;
+};
+
 const options = {
   definition: {
     openapi: "3.0.0",
@@ -12,18 +34,9 @@ const options = {
         name: "Monitoring Team",
       },
     },
-    servers: [
-      {
-        url: "http://localhost:3001",
-        description: "Development Server",
-      },
-      {
-        url: "http://localhost:3000",
-        description: "Production Server",
-      },
-    ],
+    servers: getServers(),
   },
-  apis: ["./src/routes/*.js"],
+  apis: ["./src/routes/*.js", "./src/routes/**/*.js"],
 };
 
 const specs = swaggerJsdoc(options);

@@ -18,8 +18,26 @@ app.get("/", (req, res) => {
   });
 });
 
+// Swagger documentation options
+const swaggerOptions = {
+  swaggerOptions: {
+    url: "/swagger.json",
+  },
+  customCss: ".swagger-ui { background-color: #fafafa; }",
+  customSiteTitle: "Monitoring Laka API Documentation",
+};
+
+// Serve swagger.json
+app.get("/swagger.json", (req, res) => {
+  res.json(swaggerSpecs);
+});
+
 // Swagger documentation endpoint
-app.use("/api-test", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+app.use(
+  "/api-test",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpecs, swaggerOptions),
+);
 
 app.use("/api", cardRoutes);
 
