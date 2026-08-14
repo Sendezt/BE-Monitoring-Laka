@@ -75,7 +75,7 @@ app.get("/api-test", (req, res) => {
   `);
 });
 
-app.use("/api", cardRoutes);
+app.use("/api/card", cardRoutes);
 
 const PORT = process.env.PORT || 3001;
 

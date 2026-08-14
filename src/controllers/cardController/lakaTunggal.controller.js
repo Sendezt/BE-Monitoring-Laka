@@ -1,6 +1,6 @@
-const spreadsheetService = require("../services/spreadsheet.service");
+const spreadsheetService = require("../../services/card/lakaTunggal.service");
 
-async function getCards(req, res) {
+async function getCardLakaTunggal(req, res) {
   try {
     const cards = await spreadsheetService.getCards();
 
@@ -19,5 +19,5 @@ async function getCards(req, res) {
 }
 
 module.exports = {
-  getCards,
+  getCardLakaTunggal,
 };

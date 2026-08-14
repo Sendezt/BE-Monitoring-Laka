@@ -1,4 +1,4 @@
-const sheets = require("../config/google");
+const sheets = require("../../config/google");
 
 async function getCards() {
   const response = await sheets.spreadsheets.values.get({
