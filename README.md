@@ -75,7 +75,7 @@ monitoring-laka-be/
 │   └── services/
 │       └── spreadsheet.service.js # Service untuk interaksi Sheets
 ├── credentials/
-│   └── dashboardmonitoringlaka-9735b6550a0e.json # Google credentials
+│   └── credential.json # Google credentials
 ├── package.json               # Dependencies dan scripts
 └── README.md                  # Dokumentasi project
 ```
@@ -99,6 +99,20 @@ PUT /api/card/:id      # Update card
 DELETE /api/card/:id   # Hapus card
 ```
 
+### Swagger Documentation
+
+```
+GET /api-test          # Akses dokumentasi API Swagger UI
+```
+
+**Akses Swagger UI**: http://localhost:3001/api-test
+
+Swagger menyediakan dokumentasi interaktif untuk semua API endpoints, termasuk:
+
+- Detail parameter request dan response
+- Contoh data (request/response body)
+- Kemampuan untuk test API langsung dari browser
+
 ## 🛠️ Technologies Used
 
 - **Express.js** - Web framework untuk Node.js
@@ -106,6 +120,8 @@ DELETE /api/card/:id   # Hapus card
 - **CORS** - Cross-Origin Resource Sharing middleware
 - **dotenv** - Environment variable management
 - **Nodemon** - Development tool untuk auto-restart
+- **Swagger UI Express** - API documentation dengan Swagger UI
+- **Swagger JSDoc** - Generate Swagger docs dari JSDoc comments
 
 ## 📝 Environment Variables
 
