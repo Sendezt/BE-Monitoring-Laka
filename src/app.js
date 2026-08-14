@@ -2,7 +2,6 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
-const swaggerUi = require("swagger-ui-express");
 const swaggerSpecs = require("./config/swagger");
 
 const cardRoutes = require("./routes/card.route");
@@ -18,26 +17,63 @@ app.get("/", (req, res) => {
   });
 });
 
-// Swagger documentation options
-const swaggerOptions = {
-  swaggerOptions: {
-    url: "/swagger.json",
-  },
-  customCss: ".swagger-ui { background-color: #fafafa; }",
-  customSiteTitle: "Monitoring Laka API Documentation",
-};
-
 // Serve swagger.json
 app.get("/swagger.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
   res.json(swaggerSpecs);
 });
 
-// Swagger documentation endpoint
-app.use(
-  "/api-test",
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpecs, swaggerOptions),
-);
+// Swagger UI with CDN
+app.get("/api-test", (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Monitoring Laka API Documentation</title>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui.css">
+        <style>
+          html {
+            box-sizing: border-box;
+            overflow: -moz-scrollbars-vertical;
+            overflow-y: scroll;
+          }
+          *, *:before, *:after {
+            box-sizing: inherit;
+          }
+          body {
+            margin: 0;
+            padding: 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div id="swagger-ui"></div>
+        <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-bundle.js"> </script>
+        <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-standalone-preset.js"> </script>
+        <script>
+          const ui = SwaggerUIBundle({
+            url: "/swagger.json",
+            dom_id: '#swagger-ui',
+            deepLinking: true,
+            presets: [
+              SwaggerUIBundle.presets.apis,
+              SwaggerUIStandalonePreset
+            ],
+            plugins: [
+              SwaggerUIBundle.plugins.DownloadUrl
+            ],
+            layout: "StandaloneLayout"
+          })
+          window.onload = function() {
+            window.ui = ui
+          }
+        </script>
+      </body>
+    </html>
+  `);
+});
 
 app.use("/api", cardRoutes);
 
