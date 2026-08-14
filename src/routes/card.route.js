@@ -13,6 +13,12 @@ const {
 const {
   getCardLukaLuka,
 } = require("../controllers/cardController/lukaLuka.controller");
+const {
+  getCardLLMD,
+} = require("../controllers/cardController/LL-MD.controller");
+const {
+  getCardMeninggalDunia,
+} = require("../controllers/cardController/meninggalDunia.controller");
 
 /**
  * @swagger
@@ -197,5 +203,97 @@ router.get("/jumlahKorban", getCardJumlahKorban);
  *                   example: "Failed to get cards"
  */
 router.get("/lukaLuka", getCardLukaLuka);
+
+/**
+ * @swagger
+ * /api/card/llmd:
+ *   get:
+ *     summary: Get data card Luka Luka dan Meninggal Dunia
+ *     description: Retrieve all card data from the connected Google Sheets spreadsheet
+ *     tags:
+ *       - Cards
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved cards
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *       500:
+ *         description: Failed to retrieve cards
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Failed to get cards"
+ */
+router.get("/llmd", getCardLLMD);
+
+/**
+ * @swagger
+ * /api/card/meninggaldunia:
+ *   get:
+ *     summary: Get data card Meninggal Dunia
+ *     description: Retrieve all card data from the connected Google Sheets spreadsheet
+ *     tags:
+ *       - Cards
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved cards
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *       500:
+ *         description: Failed to retrieve cards
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Failed to get cards"
+ */
+router.get("/meninggaldunia", getCardMeninggalDunia);
 
 module.exports = router;
