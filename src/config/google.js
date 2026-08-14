@@ -1,7 +1,9 @@
 const { google } = require("googleapis");
 
+const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+
 const auth = new google.auth.GoogleAuth({
-  keyFile: "credentials/dashboardmonitoringlaka-9735b6550a0e.json",
+  credentials,
   scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
 });
 
