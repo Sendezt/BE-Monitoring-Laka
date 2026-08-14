@@ -28,6 +28,9 @@ const {
 const {
   getCardLPTerlambat47,
 } = require("../controllers/cardController/LPTerlambat4-7.controller");
+const {
+  getCardLPTerlambatLebih7,
+} = require("../controllers/cardController/LPTerlambatlebih7.controller");
 
 /**
  * @swagger
@@ -442,5 +445,51 @@ router.get("/lpterlambat13", getCardLPTerlambat13);
  *                   example: "Failed to get cards"
  */
 router.get("/lpterlambat47", getCardLPTerlambat47);
+
+/**
+ * @swagger
+ * /api/card/lpterlambatlebih7:
+ *   get:
+ *     summary: Get data card Laporan Polisi Terlambat Lapor periode lebih dari 7 hari
+ *     description: Retrieve all card data from the connected Google Sheets spreadsheet
+ *     tags:
+ *       - Cards
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved cards
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *       500:
+ *         description: Failed to retrieve cards
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Failed to get cards"
+ */
+router.get("/lpterlambatlebih7", getCardLPTerlambatLebih7);
 
 module.exports = router;
