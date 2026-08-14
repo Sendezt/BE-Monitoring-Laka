@@ -34,6 +34,15 @@ const {
 const {
   getCardLPNormal,
 } = require("../controllers/cardController/LPNormal.controller");
+const {
+  getCardTerjamin,
+} = require("../controllers/cardController/terjamin.controller");
+const {
+  getCardTidakTerjamin,
+} = require("../controllers/cardController/tidakTerjamin.controller");
+const {
+  getCardEG2R,
+} = require("../controllers/cardController/eg2r.controller");
 
 /**
  * @swagger
@@ -540,5 +549,143 @@ router.get("/lpterlambatlebih7", getCardLPTerlambatLebih7);
  *                   example: "Failed to get cards"
  */
 router.get("/lpnormal", getCardLPNormal);
+
+/**
+ * @swagger
+ * /api/card/terjamin:
+ *   get:
+ *     summary: Get data card Laporan Terjamin
+ *     description: Retrieve all card data from the connected Google Sheets spreadsheet
+ *     tags:
+ *       - Cards
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved cards
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *       500:
+ *         description: Failed to retrieve cards
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Failed to get cards"
+ */
+router.get("/terjamin", getCardTerjamin);
+
+/**
+ * @swagger
+ * /api/card/tidakterjamin:
+ *   get:
+ *     summary: Get data card Laporan Tidak Terjamin
+ *     description: Retrieve all card data from the connected Google Sheets spreadsheet
+ *     tags:
+ *       - Cards
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved cards
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *       500:
+ *         description: Failed to retrieve cards
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Failed to get cards"
+ */
+router.get("/tidakterjamin", getCardTidakTerjamin);
+
+/**
+ * @swagger
+ * /api/card/eg2r:
+ *   get:
+ *     summary: Get data card EG2R
+ *     description: Retrieve all card data from the connected Google Sheets spreadsheet
+ *     tags:
+ *       - Cards
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved cards
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *       500:
+ *         description: Failed to retrieve cards
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Failed to get cards"
+ */
+router.get("/eg2r", getCardEG2R);
 
 module.exports = router;
