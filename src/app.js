@@ -13,6 +13,7 @@ const cardRoutes = require("./routes/card.route");
 const userRoutes = require("./routes/user.route");
 const authRoutes = require("./routes/auth.route");
 const wilayahRoutes = require("./routes/wilayah.route");
+const polresRoutes = require("./routes/polres.route")
 
 const app = express();
 
@@ -94,6 +95,7 @@ app.use("/api/card", cardRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/wilayah", wilayahRoutes)
+app.use("/api/polres", polresRoutes)
 
 const PORT = process.env.PORT || 3001;
 
