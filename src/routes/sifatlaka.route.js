@@ -6,7 +6,7 @@ const {
   createSifatLaka,
   updateSifatLaka,
   deleteSifatLaka,
-} = require("../controllers/sifatlaka.controller");
+} = require("../controllers/sifatLaka.controller");
 
 const router = express.Router();
 
