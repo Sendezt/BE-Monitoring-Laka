@@ -14,6 +14,7 @@ const userRoutes = require("./routes/user.route");
 const authRoutes = require("./routes/auth.route");
 const wilayahRoutes = require("./routes/wilayah.route");
 const polresRoutes = require("./routes/polres.route")
+const rumahSakitRoutes = require("./routes/rumahsakit.route")
 
 const app = express();
 
@@ -96,6 +97,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/wilayah", wilayahRoutes)
 app.use("/api/polres", polresRoutes)
+app.use("/api/rumahsakit", rumahSakitRoutes);
 
 const PORT = process.env.PORT || 3001;
 
