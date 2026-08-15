@@ -1,6 +1,5 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
-const Wilayah = require("./Wilayah");
 
 const User = sequelize.define(
   "User",
@@ -62,10 +61,5 @@ const User = sequelize.define(
     updatedAt: "updated_at",
   },
 );
-
-User.belongsTo(Wilayah, {
-  foreignKey: "wilayah_id",
-  as: "wilayah",
-});
 
 module.exports = User;
