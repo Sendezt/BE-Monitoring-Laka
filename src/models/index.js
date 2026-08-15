@@ -4,6 +4,7 @@ const Polres = require("./Polres");
 const RumahSakit = require("./RumahSakit");
 const Kecamatan = require("./Kecamatan");
 const Kelurahan = require("./Kelurahan");
+const Profesi = require("./Profesi");
 
 // =========================
 // Wilayah → User
@@ -82,4 +83,5 @@ module.exports = {
     RumahSakit,
     Kecamatan,
     Kelurahan,
+    Profesi,
 };
