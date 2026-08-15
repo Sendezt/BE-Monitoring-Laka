@@ -6,6 +6,13 @@ const Kecamatan = require("./Kecamatan");
 const Kelurahan = require("./Kelurahan");
 const Profesi = require("./Profesi");
 const TindakLanjut = require("./TindakLanjut");
+const Cidera = require("./Cidera");
+const KasusTabrakKecelakaan = require("./KasusTabrakKecelakaan");
+const FaktorPenyebabLaka = require("./FaktorPenyebabLaka");
+const SifatLaka = require("./SifatLaka");
+const Keterjaminan = require("./Keterjaminan");
+const SifatLaka = require("./SifatLaka");
+const JenisKendaraan = require("./JenisKendaraan");
 
 // =========================
 // Wilayah → User
@@ -86,4 +93,11 @@ module.exports = {
     Kelurahan,
     Profesi,
     TindakLanjut,
+    KasusTabrakKecelakaan,
+    FaktorPenyebabLaka,
+    SifatLaka,
+    Cidera,
+    Keterjaminan,
+    SifatLaka,
+    JenisKendaraan,
 };
