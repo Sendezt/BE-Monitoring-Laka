@@ -3,6 +3,7 @@ const Wilayah = require("./Wilayah");
 const Polres = require("./Polres");
 const RumahSakit = require("./RumahSakit");
 const Kecamatan = require("./Kecamatan");
+const Kelurahan = require("./Kelurahan");
 
 // =========================
 // Wilayah → User
@@ -60,10 +61,25 @@ Kecamatan.belongsTo(Polres, {
     as: "polres",
 });
 
+// =========================
+// Kecamatan → Kelurahan
+// =========================
+
+Kecamatan.hasMany(Kelurahan, {
+    foreignKey: "kecamatan_id",
+    as: "kelurahan",
+});
+
+Kelurahan.belongsTo(Kecamatan, {
+    foreignKey: "kecamatan_id",
+    as: "kecamatan",
+});
+
 module.exports = {
     User,
     Wilayah,
     Polres,
     RumahSakit,
     Kecamatan,
+    Kelurahan,
 };
