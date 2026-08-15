@@ -23,6 +23,9 @@ const cideraRoutes = require("./routes/cidera.route");
 const keterjaminanRoutes = require("./routes/keterjaminan.route");
 const sifatLakaRoutes = require("./routes/sifatLaka.route");
 const jenisKendaraanRoutes = require("./routes/jenisKendaraan.route");
+const kasusTabrakKecelakaanRoutes = require("./routes/kasustabrakkecelakaan.route");
+const faktorPenyebabLakaRoutes = require("./routes/faktorpenyebablaka.route");
+const sifatLakaRoutes = require("./routes/sifatLaka.route");
 
 const app = express();
 
@@ -114,6 +117,9 @@ app.use("/api/cidera", cideraRoutes);
 app.use("/api/keterjaminan", keterjaminanRoutes);
 app.use("/api/sifat-laka", sifatLakaRoutes);
 app.use("/api/jenis-kendaraan", jenisKendaraanRoutes);
+app.use("/api/kasus-tabrak-kecelakaan", kasusTabrakKecelakaanRoutes);
+app.use("/api/faktor-penyebab-laka", faktorPenyebabLakaRoutes);
+app.use("/api/sifat-laka", sifatLakaRoutes);
 
 const PORT = process.env.PORT || 3001;
 
