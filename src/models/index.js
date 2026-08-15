@@ -11,11 +11,7 @@ const KasusTabrakKecelakaan = require("./KasusTabrakKecelakaan");
 const FaktorPenyebabLaka = require("./FaktorPenyebabLaka");
 const SifatLaka = require("./SifatLaka");
 const Keterjaminan = require("./Keterjaminan");
-const SifatLaka = require("./SifatLaka");
 const JenisKendaraan = require("./JenisKendaraan");
-const KasusTabrakKecelakaan = require("./KasusTabrakKecelakaan");
-const FaktorPenyebabLaka = require("./FaktorPenyebabLaka");
-const SifatLaka = require("./SifatLaka");
 
 // =========================
 // Wilayah → User
@@ -101,6 +97,5 @@ module.exports = {
     SifatLaka,
     Cidera,
     Keterjaminan,
-    SifatLaka,
     JenisKendaraan,
 };
