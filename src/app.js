@@ -19,6 +19,9 @@ const kecamatanRoutes = require("./routes/kecamatan.route");
 const kelurahanRoutes = require("./routes/kelurahan.route");
 const profesiRoutes = require("./routes/profesi.route");
 const tindakLanjutRoutes = require("./routes/tindaklanjut.route");
+const kasusTabrakKecelakaanRoutes = require("./routes/kasustabrakkecelakaan.route");
+const faktorPenyebabLakaRoutes = require("./routes/faktorpenyebablaka.route");
+const sifatLakaRoutes = require("./routes/sifatlaka.route");
 
 const app = express();
 
@@ -106,6 +109,9 @@ app.use("/api/kecamatan", kecamatanRoutes);
 app.use("/api/kelurahan", kelurahanRoutes);
 app.use("/api/profesi", profesiRoutes);
 app.use("/api/tindak-lanjut", tindakLanjutRoutes);
+app.use("/api/kasus-tabrak-kecelakaan", kasusTabrakKecelakaanRoutes);
+app.use("/api/faktor-penyebab-laka", faktorPenyebabLakaRoutes);
+app.use("/api/sifat-laka", sifatLakaRoutes);
 
 const PORT = process.env.PORT || 3001;
 
