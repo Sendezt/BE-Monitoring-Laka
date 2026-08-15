@@ -120,6 +120,22 @@ const options = {
             },
           },
         },
+
+        LoginRequest: {
+          type: "object",
+          required: ["username", "password"],
+          properties: {
+            username: {
+              type: "string",
+              example: "admin",
+            },
+
+            password: {
+              type: "string",
+              example: "password123",
+            },
+          },
+        },
       },
     },
   },
