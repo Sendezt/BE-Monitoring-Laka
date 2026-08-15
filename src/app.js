@@ -13,8 +13,9 @@ const cardRoutes = require("./routes/card.route");
 const userRoutes = require("./routes/user.route");
 const authRoutes = require("./routes/auth.route");
 const wilayahRoutes = require("./routes/wilayah.route");
-const polresRoutes = require("./routes/polres.route")
-const rumahSakitRoutes = require("./routes/rumahsakit.route")
+const polresRoutes = require("./routes/polres.route");
+const rumahSakitRoutes = require("./routes/rumahsakit.route");
+const kecamatanRoutes = require("./routes/kecamatan.route");
 
 const app = express();
 
@@ -98,6 +99,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/wilayah", wilayahRoutes)
 app.use("/api/polres", polresRoutes)
 app.use("/api/rumahsakit", rumahSakitRoutes);
+app.use("/api/kecamatan", kecamatanRoutes);
 
 const PORT = process.env.PORT || 3001;
 
