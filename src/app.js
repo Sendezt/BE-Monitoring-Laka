@@ -1,10 +1,16 @@
+// src/app.js
 require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+
+const logger = require("./utils/logger");
 const swaggerSpecs = require("./config/swagger");
+const sequelize = require("./config/database");
+const User = require("./models/User");
 
 const cardRoutes = require("./routes/card.route");
+const userRoutes = require("./routes/user.route");
 
 const app = express();
 
@@ -39,19 +45,24 @@ app.get("/api-test", (req, res) => {
             overflow: -moz-scrollbars-vertical;
             overflow-y: scroll;
           }
+
           *, *:before, *:after {
             box-sizing: inherit;
           }
+
           body {
             margin: 0;
             padding: 0;
           }
         </style>
       </head>
+
       <body>
         <div id="swagger-ui"></div>
-        <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-bundle.js"> </script>
-        <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-standalone-preset.js"> </script>
+
+        <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-bundle.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-standalone-preset.js"></script>
+
         <script>
           const ui = SwaggerUIBundle({
             url: "/swagger.json",
@@ -65,20 +76,40 @@ app.get("/api-test", (req, res) => {
               SwaggerUIBundle.plugins.DownloadUrl
             ],
             layout: "StandaloneLayout"
-          })
+          });
+
           window.onload = function() {
-            window.ui = ui
-          }
+            window.ui = ui;
+          };
         </script>
       </body>
     </html>
   `);
 });
 
+// Routes
 app.use("/api/card", cardRoutes);
+app.use("/api/users", userRoutes);
 
 const PORT = process.env.PORT || 3001;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Start server + database connection
+async function startServer() {
+  try {
+    await sequelize.authenticate();
+
+    logger.info("MySQL database connected successfully");
+
+    await sequelize.sync();
+
+    logger.info("Database tables synchronized successfully");
+
+    app.listen(PORT, () => {
+      logger.info(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    logger.error("Unable to start server", error);
+  }
+}
+
+startServer();
