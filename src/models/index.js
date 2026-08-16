@@ -121,12 +121,12 @@ LaporanPolisi.belongsTo(RumahSakit, {
 });
 
 // Tidak Lanjut -> LaporanPolisi
-TidakLanjut.hasMany(LaporanPolisi, {
+TindakLanjut.hasMany(LaporanPolisi, {
   foreignKey: "tindak_lanjut_id",
   as: "laporanPolisi",
 });
 
-LaporanPolisi.belongsTo(TidakLanjut, {
+LaporanPolisi.belongsTo(TindakLanjut, {
   foreignKey: "tindak_lanjut_id",
   as: "tindakLanjut",
 });
