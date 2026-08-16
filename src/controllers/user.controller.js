@@ -10,7 +10,14 @@ const logger = require("../utils/logger");
 // GET /api/users
 const getUsers = async (req, res) => {
   try {
-    const users = await User.findAll({
+        const { page = 1, limit = 10 } = req.query;
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+        const offset = (pageNum - 1) * limitNum;
+
+    const { count, rows } = await User.findAndCountAll({
+            limit: limitNum,
+            offset: offset,
       attributes: {
         exclude: ["password"],
       },
@@ -23,7 +30,18 @@ const getUsers = async (req, res) => {
       ],
     });
 
-    return successResponse(res, 200, "Users retrieved successfully", users);
+    return successResponse(
+            res,
+            200,
+            "Users retrieved successfully",
+            rows,
+            {
+                total: count,
+                page: pageNum,
+                limit: limitNum,
+                total_pages: Math.ceil(count / limitNum),
+            }
+        );
   } catch (error) {
     logger.error("Get users error", error);
 

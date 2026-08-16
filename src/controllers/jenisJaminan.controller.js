@@ -10,7 +10,14 @@ const logger = require("../utils/logger");
 // GET /api/jenis-jaminan
 const getJenisJaminan = async (req, res) => {
     try {
-        const jenisJaminan = await JenisJaminan.findAll({
+        const { page = 1, limit = 10 } = req.query;
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+        const offset = (pageNum - 1) * limitNum;
+
+        const { count, rows } = await JenisJaminan.findAndCountAll({
+            limit: limitNum,
+            offset: offset,
             where: {
                 is_active: true,
             },
@@ -21,7 +28,13 @@ const getJenisJaminan = async (req, res) => {
             res,
             200,
             "Jenis jaminan retrieved successfully",
-            jenisJaminan
+            rows,
+            {
+                total: count,
+                page: pageNum,
+                limit: limitNum,
+                total_pages: Math.ceil(count / limitNum),
+            }
         );
     } catch (error) {
         logger.error(

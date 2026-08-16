@@ -14,7 +14,14 @@ const logger = require("../utils/logger");
 // GET /api/kendaraan
 const getKendaraan = async (req, res) => {
     try {
-        const kendaraan = await Kendaraan.findAll({
+        const { page = 1, limit = 10 } = req.query;
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+        const offset = (pageNum - 1) * limitNum;
+
+        const { count, rows } = await Kendaraan.findAndCountAll({
+            limit: limitNum,
+            offset: offset,
             where: {
                 is_active: true,
             },
@@ -39,7 +46,13 @@ const getKendaraan = async (req, res) => {
             res,
             200,
             "Kendaraan retrieved successfully",
-            kendaraan
+            rows,
+            {
+                total: count,
+                page: pageNum,
+                limit: limitNum,
+                total_pages: Math.ceil(count / limitNum),
+            }
         );
     } catch (error) {
         logger.error(
