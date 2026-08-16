@@ -3,6 +3,8 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const os = require("os");
+const fs = require("fs");
 
 const logger = require("./utils/logger");
 const swaggerSpecs = require("./config/swagger");
@@ -34,12 +36,112 @@ const activityLogRoutes = require("./routes/activityLog.route");
 
 const app = express();
 
+const formatUptime = (seconds) => {
+  const totalSeconds = Math.floor(seconds);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+
+  const parts = [];
+
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
+
+  return parts.join(" ");
+};
+
+const getMemoryInfo = () => {
+  const total = os.totalmem();
+  const free = os.freemem();
+  const used = total - free;
+
+  return {
+    totalGB: Number((total / 1024 ** 3).toFixed(2)),
+    freeGB: Number((free / 1024 ** 3).toFixed(2)),
+    usedGB: Number((used / 1024 ** 3).toFixed(2)),
+    usedPercent: Number(((used / total) * 100).toFixed(2)),
+  };
+};
+
+const getCpuInfo = () => {
+  const cpus = os.cpus();
+  const totalCores = cpus.length;
+  const model = cpus[0]?.model || "Unknown";
+
+  return {
+    model,
+    cores: totalCores,
+  };
+};
+
+const getStorageInfo = () => {
+  const targetPath = process.platform === "win32" ? "C:\\" : "/";
+
+  try {
+    const stats = fs.statfsSync(targetPath);
+    const total = stats.blocks * stats.bsize;
+    const free = stats.bavail * stats.bsize;
+    const used = total - free;
+
+    return {
+      totalGB: Number((total / 1024 ** 3).toFixed(2)),
+      freeGB: Number((free / 1024 ** 3).toFixed(2)),
+      usedGB: Number((used / 1024 ** 3).toFixed(2)),
+      usedPercent: Number(((used / total) * 100).toFixed(2)),
+    };
+  } catch (error) {
+    return {
+      totalGB: null,
+      freeGB: null,
+      usedGB: null,
+      usedPercent: null,
+      note: "Unable to read storage info",
+    };
+  }
+};
+
 app.use(cors());
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.json({
-    message: "Spreadsheet API is running",
+  const cpuInfo = getCpuInfo();
+  const memoryInfo = getMemoryInfo();
+  const storageInfo = getStorageInfo();
+
+  res.status(200).json({
+    success: true,
+    message: "Monitoring Laka API is running",
+    status: "online",
+    server: {
+      runtime: "Node.js",
+      framework: "Express",
+      database: "MySQL",
+      platform: process.platform,
+      port: Number(process.env.PORT || 3001),
+      environment: process.env.NODE_ENV || "development",
+      uptime: formatUptime(process.uptime()),
+      cpu: {
+        model: cpuInfo.model,
+        cores: cpuInfo.cores,
+      },
+      memory: {
+        totalGB: memoryInfo.totalGB,
+        usedGB: memoryInfo.usedGB,
+        freeGB: memoryInfo.freeGB,
+      },
+      storage: {
+        totalGB: storageInfo.totalGB,
+        usedGB: storageInfo.usedGB,
+        freeGB: storageInfo.freeGB,
+      },
+    },
+    docs: {
+      swaggerUi: "/api-test",
+      swaggerJson: "/swagger.json",
+    },
   });
 });
 
