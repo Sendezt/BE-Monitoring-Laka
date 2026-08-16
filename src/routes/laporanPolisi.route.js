@@ -185,6 +185,42 @@ const router = express.Router();
  *           type: string
  *           nullable: true
  *           example: "Kecelakaan melibatkan dua sepeda motor."
+ *         kendaraan:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               peran:
+ *                 type: string
+ *                 enum: [korban, penjamin]
+ *                 example: korban
+ *               jenis_kendaraan_id:
+ *                 type: integer
+ *                 example: 1
+ *               nopol:
+ *                 type: string
+ *                 example: "R 1234 AB"
+ *         korban:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               nama:
+ *                 type: string
+ *                 example: "Budi Santoso"
+ *               usia:
+ *                 type: integer
+ *                 example: 35
+ *               profesi_id:
+ *                 type: integer
+ *                 example: 3
+ *               cidera_id:
+ *                 type: integer
+ *                 example: 2
+ *               kendaraan_index:
+ *                 type: integer
+ *                 description: Index kendaraan di array kendaraan (0, 1, 2, dst)
+ *                 example: 0
  */
 
 /**
