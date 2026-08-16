@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 
 const User = require("../models/User");
 const Wilayah = require("../models/Wilayah");
+const ActivityLog = require("../models/ActivityLog");
 
 const {
     successResponse,
@@ -84,6 +85,15 @@ const login = async (req, res) => {
                 expiresIn: process.env.JWT_EXPIRES_IN || "1d",
             },
         );
+
+        // Catat aktivitas login
+        await ActivityLog.create({
+            aksi: "LOGIN",
+            tabel: "users",
+            record_id: user.id,
+            user_id: user.id,
+            ip_address: req.ip || req.connection.remoteAddress,
+        });
 
         return successResponse(
             res,
