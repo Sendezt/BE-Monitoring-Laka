@@ -9,7 +9,7 @@ const swaggerSpecs = require("./config/swagger");
 const sequelize = require("./config/database");
 // const User = require("./models/User");
 
-const cardRoutes = require("./routes/card.route");
+// const cardRoutes = require("./routes/card.route");
 const userRoutes = require("./routes/user.route");
 const authRoutes = require("./routes/auth.route");
 const wilayahRoutes = require("./routes/wilayah.route");
@@ -108,7 +108,7 @@ app.get("/api-test", (req, res) => {
 });
 
 // Routes
-app.use("/api/card", cardRoutes);
+// app.use("/api/card", cardRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/wilayah", wilayahRoutes)
