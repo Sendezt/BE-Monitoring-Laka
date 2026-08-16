@@ -175,19 +175,18 @@ const getLaporanPolisi = async (req, res) => {
             ];
         }
 
+        const includes = detailInclude.map(inc => {
+            if (inc.as === "kecamatan") return includeKecamatan;
+            return inc;
+        });
+
         const { count, rows } = await LaporanPolisi.findAndCountAll({
             where,
-            include: [
-                includeKecamatan,
-                {
-                    model: Kelurahan,
-                    as: "kelurahan",
-                    attributes: ["id", "nama"],
-                },
-            ],
+            include: includes,
             order: [["tanggal_laka", "DESC"]],
             limit: limitNum,
             offset,
+            distinct: true,
             distinct: true,
         });
 

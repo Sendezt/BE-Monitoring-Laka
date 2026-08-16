@@ -165,6 +165,28 @@ LaporanPolisi.belongsTo(SifatLaka, {
   as: "sifatLaka",
 });
 
+// Kasus Tabrak Kecelakaan -> LaporanPolisi
+KasusTabrakKecelakaan.hasMany(LaporanPolisi, {
+  foreignKey: "kasus_tabrak_kecelakaan_id",
+  as: "laporanPolisi",
+});
+
+LaporanPolisi.belongsTo(KasusTabrakKecelakaan, {
+  foreignKey: "kasus_tabrak_kecelakaan_id",
+  as: "kasusTabrakKecelakaan",
+});
+
+// Faktor Penyebab Laka -> LaporanPolisi
+FaktorPenyebabLaka.hasMany(LaporanPolisi, {
+  foreignKey: "faktor_penyebab_laka_id",
+  as: "laporanPolisi",
+});
+
+LaporanPolisi.belongsTo(FaktorPenyebabLaka, {
+  foreignKey: "faktor_penyebab_laka_id",
+  as: "faktorPenyebabLaka",
+});
+
 // Laporan Polisi -> Kendaraan
 LaporanPolisi.hasMany(Kendaraan, {
   foreignKey: "laporan_polisi_id",
