@@ -28,6 +28,7 @@ const faktorPenyebabLakaRoutes = require("./routes/faktorpenyebablaka.route");
 const jenisJaminanRoutes = require("./routes/jenisJaminan.route");
 const laporanPolisiRoutes = require("./routes/laporanPolisi.route");
 const kendaraanRoutes = require("./routes/kendaraan.route");
+const korbanRoutes = require("./routes/korban.route");
 
 const app = express();
 
@@ -124,6 +125,7 @@ app.use("/api/faktor-penyebab-laka", faktorPenyebabLakaRoutes);
 app.use("/api/jenis-jaminan", jenisJaminanRoutes);
 app.use("/api/laporan-polisi", laporanPolisiRoutes);
 app.use("/api/kendaraan", kendaraanRoutes);
+app.use("/api/korban", korbanRoutes);
 
 const PORT = process.env.PORT || 3001;
 

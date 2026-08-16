@@ -15,6 +15,7 @@ const JenisKendaraan = require("./JenisKendaraan");
 const JenisJaminan = require("./JenisJaminan");
 const LaporanPolisi = require("./LaporPolisi")
 const Kendaraan = require("./Kendaraan");
+const Korban = require("./Korban");
 
 // =========================
 // Wilayah → User
@@ -185,6 +186,50 @@ Kendaraan.belongsTo(JenisKendaraan, {
   as: "jenisKendaraan",
 });
 
+// Laporan Polisi → Korban
+LaporanPolisi.hasMany(Korban, {
+  foreignKey: "laporan_polisi_id",
+  as: "korban",
+});
+
+Korban.belongsTo(LaporanPolisi, {
+  foreignKey: "laporan_polisi_id",
+  as: "laporanPolisi",
+});
+
+// Profesi → Korban
+Profesi.hasMany(Korban, {
+  foreignKey: "profesi_id",
+  as: "korban",
+});
+
+Korban.belongsTo(Profesi, {
+  foreignKey: "profesi_id",
+  as: "profesi",
+});
+
+// Cidera → Korban
+Cidera.hasMany(Korban, {
+  foreignKey: "cidera_id",
+  as: "korban",
+});
+
+Korban.belongsTo(Cidera, {
+  foreignKey: "cidera_id",
+  as: "cidera",
+});
+
+// Kendaraan → Korban
+Kendaraan.hasMany(Korban, {
+  foreignKey: "kendaraan_id",
+  as: "korban",
+});
+
+Korban.belongsTo(Kendaraan, {
+  foreignKey: "kendaraan_id",
+  as: "kendaraan",
+});
+
 
 module.exports = {
   User,
@@ -204,4 +249,5 @@ module.exports = {
   JenisJaminan,
   LaporanPolisi,
   Kendaraan,
+  Korban,
 };
