@@ -18,6 +18,9 @@ const getWilayah = async (req, res) => {
         const { count, rows } = await Wilayah.findAndCountAll({
             limit: limitNum,
             offset: offset,
+            attributes: {
+                exclude: ["is_active"],
+            },
             where: {
                 is_active: true,
             },
