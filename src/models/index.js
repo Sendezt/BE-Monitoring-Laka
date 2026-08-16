@@ -14,19 +14,20 @@ const Keterjaminan = require("./Keterjaminan");
 const JenisKendaraan = require("./JenisKendaraan");
 const JenisJaminan = require("./JenisJaminan");
 const LaporanPolisi = require("./LaporPolisi")
+const Kendaraan = require("./Kendaraan");
 
 // =========================
 // Wilayah → User
 // =========================
 
 Wilayah.hasMany(User, {
-    foreignKey: "wilayah_id",
-    as: "users",
+  foreignKey: "wilayah_id",
+  as: "users",
 });
 
 User.belongsTo(Wilayah, {
-    foreignKey: "wilayah_id",
-    as: "wilayah",
+  foreignKey: "wilayah_id",
+  as: "wilayah",
 });
 
 // =========================
@@ -34,13 +35,13 @@ User.belongsTo(Wilayah, {
 // =========================
 
 Wilayah.hasMany(Polres, {
-    foreignKey: "wilayah_id",
-    as: "polres",
+  foreignKey: "wilayah_id",
+  as: "polres",
 });
 
 Polres.belongsTo(Wilayah, {
-    foreignKey: "wilayah_id",
-    as: "wilayah",
+  foreignKey: "wilayah_id",
+  as: "wilayah",
 });
 
 // =========================
@@ -48,13 +49,13 @@ Polres.belongsTo(Wilayah, {
 // =========================
 
 Wilayah.hasMany(RumahSakit, {
-    foreignKey: "wilayah_id",
-    as: "rumah_sakit",
+  foreignKey: "wilayah_id",
+  as: "rumah_sakit",
 });
 
 RumahSakit.belongsTo(Wilayah, {
-    foreignKey: "wilayah_id",
-    as: "wilayah",
+  foreignKey: "wilayah_id",
+  as: "wilayah",
 });
 
 // =========================
@@ -62,13 +63,13 @@ RumahSakit.belongsTo(Wilayah, {
 // =========================
 
 Polres.hasMany(Kecamatan, {
-    foreignKey: "polres_id",
-    as: "kecamatan",
+  foreignKey: "polres_id",
+  as: "kecamatan",
 });
 
 Kecamatan.belongsTo(Polres, {
-    foreignKey: "polres_id",
-    as: "polres",
+  foreignKey: "polres_id",
+  as: "polres",
 });
 
 // =========================
@@ -76,13 +77,13 @@ Kecamatan.belongsTo(Polres, {
 // =========================
 
 Kecamatan.hasMany(Kelurahan, {
-    foreignKey: "kecamatan_id",
-    as: "kelurahan",
+  foreignKey: "kecamatan_id",
+  as: "kelurahan",
 });
 
 Kelurahan.belongsTo(Kecamatan, {
-    foreignKey: "kecamatan_id",
-    as: "kecamatan",
+  foreignKey: "kecamatan_id",
+  as: "kecamatan",
 });
 
 // Kecamatan -> LaporanPolisi
@@ -162,22 +163,45 @@ LaporanPolisi.belongsTo(SifatLaka, {
   as: "sifatLaka",
 });
 
+// Laporan Polisi -> Kendaraan
+LaporanPolisi.hasMany(Kendaraan, {
+  foreignKey: "laporan_polisi_id",
+  as: "kendaraan",
+});
+
+Kendaraan.belongsTo(LaporanPolisi, {
+  foreignKey: "laporan_polisi_id",
+  as: "laporanPolisi",
+});
+
+// Jenis Kendaraan -> Kendaraan
+JenisKendaraan.hasMany(Kendaraan, {
+  foreignKey: "jenis_kendaraan_id",
+  as: "kendaraan",
+});
+
+Kendaraan.belongsTo(JenisKendaraan, {
+  foreignKey: "jenis_kendaraan_id",
+  as: "jenisKendaraan",
+});
+
 
 module.exports = {
-    User,
-    Wilayah,
-    Polres,
-    RumahSakit,
-    Kecamatan,
-    Kelurahan,
-    Profesi,
-    TindakLanjut,
-    KasusTabrakKecelakaan,
-    FaktorPenyebabLaka,
-    SifatLaka,
-    Cidera,
-    Keterjaminan,
-    JenisKendaraan,
-    JenisJaminan,
-    LaporanPolisi,
+  User,
+  Wilayah,
+  Polres,
+  RumahSakit,
+  Kecamatan,
+  Kelurahan,
+  Profesi,
+  TindakLanjut,
+  KasusTabrakKecelakaan,
+  FaktorPenyebabLaka,
+  SifatLaka,
+  Cidera,
+  Keterjaminan,
+  JenisKendaraan,
+  JenisJaminan,
+  LaporanPolisi,
+  Kendaraan,
 };
