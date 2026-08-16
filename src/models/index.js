@@ -13,6 +13,7 @@ const SifatLaka = require("./SifatLaka");
 const Keterjaminan = require("./Keterjaminan");
 const JenisKendaraan = require("./JenisKendaraan");
 const JenisJaminan = require("./JenisJaminan");
+const LaporanPolisi = require("./LaporPolisi")
 
 // =========================
 // Wilayah → User
@@ -84,6 +85,84 @@ Kelurahan.belongsTo(Kecamatan, {
     as: "kecamatan",
 });
 
+// Kecamatan -> LaporanPolisi
+Kecamatan.hasMany(LaporanPolisi, {
+  foreignKey: "kecamatan_id",
+  as: "laporanPolisi",
+});
+
+LaporanPolisi.belongsTo(Kecamatan, {
+  foreignKey: "kecamatan_id",
+  as: "kecamatan",
+});
+
+// Kelurahan -> LaporanPolisi
+Kelurahan.hasMany(LaporanPolisi, {
+  foreignKey: "kelurahan_id",
+  as: "laporanPolisi",
+});
+
+LaporanPolisi.belongsTo(Kelurahan, {
+  foreignKey: "kelurahan_id",
+  as: "kelurahan",
+});
+
+// Rumah Sakit -> LaporanPolisi
+RumahSakit.hasMany(LaporanPolisi, {
+  foreignKey: "rumah_sakit_id",
+  as: "laporanPolisi",
+});
+
+LaporanPolisi.belongsTo(RumahSakit, {
+  foreignKey: "rumah_sakit_id",
+  as: "rumahSakit",
+});
+
+// Tidak Lanjut -> LaporanPolisi
+TidakLanjut.hasMany(LaporanPolisi, {
+  foreignKey: "tindak_lanjut_id",
+  as: "laporanPolisi",
+});
+
+LaporanPolisi.belongsTo(TidakLanjut, {
+  foreignKey: "tindak_lanjut_id",
+  as: "tindakLanjut",
+});
+
+// Jenis Jaminan -> LaporanPolisi
+JenisJaminan.hasMany(LaporanPolisi, {
+  foreignKey: "jenis_jaminan_id",
+  as: "laporanPolisi",
+});
+
+LaporanPolisi.belongsTo(JenisJaminan, {
+  foreignKey: "jenis_jaminan_id",
+  as: "jenisJaminan",
+});
+
+// Keterjaminan -> LaporanPolisi
+Keterjaminan.hasMany(LaporanPolisi, {
+  foreignKey: "keterjaminan_id",
+  as: "laporanPolisi",
+});
+
+LaporanPolisi.belongsTo(Keterjaminan, {
+  foreignKey: "keterjaminan_id",
+  as: "laporanPolisi",
+});
+
+// Sifat Laka -> LaporanPolisi
+SifatLaka.hasMany(LaporanPolisi, {
+  foreignKey: "sifat_laka_id",
+  as: "laporanPolisi",
+});
+
+LaporanPolisi.belongsTo(SifatLaka, {
+  foreignKey: "sifat_laka_id",
+  as: "sifatLaka",
+});
+
+
 module.exports = {
     User,
     Wilayah,
@@ -100,4 +179,5 @@ module.exports = {
     Keterjaminan,
     JenisKendaraan,
     JenisJaminan,
+    LaporanPolisi,
 };
