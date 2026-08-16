@@ -35,7 +35,19 @@ const options = {
       },
     },
     servers: getServers(),
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
     components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+        },
+      },
       schemas: {
         User: {
           type: "object",

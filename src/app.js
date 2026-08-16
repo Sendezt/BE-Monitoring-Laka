@@ -7,7 +7,7 @@ const cors = require("cors");
 const logger = require("./utils/logger");
 const swaggerSpecs = require("./config/swagger");
 const sequelize = require("./config/database");
-const User = require("./models/User");
+// const User = require("./models/User");
 
 const cardRoutes = require("./routes/card.route");
 const userRoutes = require("./routes/user.route");
