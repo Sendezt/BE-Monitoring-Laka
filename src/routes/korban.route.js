@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const {
     getKorban,
@@ -9,6 +9,8 @@ const {
 } = require("../controllers/korban.controller");
 
 const router = express.Router();
+
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -117,7 +119,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to retrieve korban
  */
-router.get("/", getKorban);
+router.get("/", verifyToken, getKorban);
 
 /**
  * @swagger
@@ -155,7 +157,7 @@ router.get("/", getKorban);
  *       500:
  *         description: Failed to retrieve korban
  */
-router.get("/:id", getKorbanById);
+router.get("/:id", verifyToken, getKorbanById);
 
 /**
  * @swagger
@@ -193,7 +195,7 @@ router.get("/:id", getKorbanById);
  *       500:
  *         description: Failed to create korban
  */
-router.post("/", createKorban);
+router.post("/", verifyToken, createKorban);
 
 /**
  * @swagger
@@ -239,7 +241,7 @@ router.post("/", createKorban);
  *       500:
  *         description: Failed to update korban
  */
-router.put("/:id", updateKorban);
+router.put("/:id", verifyToken, updateKorban);
 
 /**
  * @swagger
@@ -278,6 +280,7 @@ router.put("/:id", updateKorban);
  *       500:
  *         description: Failed to delete korban
  */
-router.delete("/:id", deleteKorban);
+router.delete("/:id", verifyToken, checkRole(["admin"]), deleteKorban);
 
 module.exports = router;
+

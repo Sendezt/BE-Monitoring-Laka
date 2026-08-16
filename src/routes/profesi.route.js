@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const {
     getProfesi,
@@ -9,6 +9,8 @@ const {
 } = require("../controllers/profesi.controller");
 
 const router = express.Router();
+
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -79,7 +81,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to retrieve profesi
  */
-router.get("/", getProfesi);
+router.get("/", verifyToken, getProfesi);
 
 /**
  * @swagger
@@ -117,7 +119,7 @@ router.get("/", getProfesi);
  *       500:
  *         description: Failed to retrieve profesi
  */
-router.get("/:id", getProfesiById);
+router.get("/:id", verifyToken, getProfesiById);
 
 /**
  * @swagger
@@ -155,7 +157,7 @@ router.get("/:id", getProfesiById);
  *       500:
  *         description: Failed to create profesi
  */
-router.post("/", createProfesi);
+router.post("/", verifyToken, checkRole(["admin"]), createProfesi);
 
 /**
  * @swagger
@@ -203,7 +205,7 @@ router.post("/", createProfesi);
  *       500:
  *         description: Failed to update profesi
  */
-router.put("/:id", updateProfesi);
+router.put("/:id", verifyToken, checkRole(["admin"]), updateProfesi);
 
 /**
  * @swagger
@@ -242,6 +244,7 @@ router.put("/:id", updateProfesi);
  *       500:
  *         description: Failed to delete profesi
  */
-router.delete("/:id", deleteProfesi);
+router.delete("/:id", verifyToken, checkRole(["admin"]), deleteProfesi);
 
 module.exports = router;
+

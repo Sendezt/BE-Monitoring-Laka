@@ -70,6 +70,7 @@ const login = async (req, res) => {
 
         // Create JWT payload
         const payload = {
+            id: user.id,
             username: user.username,
             role: user.role,
             wilayah_id: user.wilayah_id,

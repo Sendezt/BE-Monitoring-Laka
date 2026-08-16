@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const {
     getKelurahan,
@@ -9,6 +9,8 @@ const {
 } = require("../controllers/kelurahan.controller");
 
 const router = express.Router();
+
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -119,7 +121,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to retrieve kelurahan
  */
-router.get("/", getKelurahan);
+router.get("/", verifyToken, getKelurahan);
 
 /**
  * @swagger
@@ -157,7 +159,7 @@ router.get("/", getKelurahan);
  *       500:
  *         description: Failed to retrieve kelurahan
  */
-router.get("/:id", getKelurahanById);
+router.get("/:id", verifyToken, getKelurahanById);
 
 /**
  * @swagger
@@ -197,7 +199,7 @@ router.get("/:id", getKelurahanById);
  *       500:
  *         description: Failed to create kelurahan
  */
-router.post("/", createKelurahan);
+router.post("/", verifyToken, checkRole(["admin"]), createKelurahan);
 
 /**
  * @swagger
@@ -245,7 +247,7 @@ router.post("/", createKelurahan);
  *       500:
  *         description: Failed to update kelurahan
  */
-router.put("/:id", updateKelurahan);
+router.put("/:id", verifyToken, checkRole(["admin"]), updateKelurahan);
 
 /**
  * @swagger
@@ -284,6 +286,7 @@ router.put("/:id", updateKelurahan);
  *       500:
  *         description: Failed to delete kelurahan
  */
-router.delete("/:id", deleteKelurahan);
+router.delete("/:id", verifyToken, checkRole(["admin"]), deleteKelurahan);
 
 module.exports = router;
+

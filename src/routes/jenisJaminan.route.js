@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const {
     getJenisJaminan,
@@ -9,6 +9,8 @@ const {
 } = require("../controllers/jenisJaminan.controller");
 
 const router = express.Router();
+
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -79,7 +81,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to retrieve jenis jaminan
  */
-router.get("/", getJenisJaminan);
+router.get("/", verifyToken, getJenisJaminan);
 
 /**
  * @swagger
@@ -117,7 +119,7 @@ router.get("/", getJenisJaminan);
  *       500:
  *         description: Failed to retrieve jenis jaminan
  */
-router.get("/:id", getJenisJaminanById);
+router.get("/:id", verifyToken, getJenisJaminanById);
 
 /**
  * @swagger
@@ -155,7 +157,7 @@ router.get("/:id", getJenisJaminanById);
  *       500:
  *         description: Failed to create jenis jaminan
  */
-router.post("/", createJenisJaminan);
+router.post("/", verifyToken, checkRole(["admin"]), createJenisJaminan);
 
 /**
  * @swagger
@@ -203,7 +205,7 @@ router.post("/", createJenisJaminan);
  *       500:
  *         description: Failed to update jenis jaminan
  */
-router.put("/:id", updateJenisJaminan);
+router.put("/:id", verifyToken, checkRole(["admin"]), updateJenisJaminan);
 
 /**
  * @swagger
@@ -242,6 +244,7 @@ router.put("/:id", updateJenisJaminan);
  *       500:
  *         description: Failed to delete jenis jaminan
  */
-router.delete("/:id", deleteJenisJaminan);
+router.delete("/:id", verifyToken, checkRole(["admin"]), deleteJenisJaminan);
 
 module.exports = router;
+

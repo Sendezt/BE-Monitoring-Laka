@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const {
     getTindakLanjut,
@@ -9,6 +9,8 @@ const {
 } = require("../controllers/tindaklanjut.controller");
 
 const router = express.Router();
+
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -79,7 +81,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to retrieve tidak lanjut
  */
-router.get("/", getTindakLanjut);
+router.get("/", verifyToken, getTindakLanjut);
 
 /**
  * @swagger
@@ -117,7 +119,7 @@ router.get("/", getTindakLanjut);
  *       500:
  *         description: Failed to retrieve tidak lanjut
  */
-router.get("/:id", getTindakLanjutById);
+router.get("/:id", verifyToken, getTindakLanjutById);
 
 /**
  * @swagger
@@ -155,7 +157,7 @@ router.get("/:id", getTindakLanjutById);
  *       500:
  *         description: Failed to create tidak lanjut
  */
-router.post("/", createTindakLanjut);
+router.post("/", verifyToken, checkRole(["admin"]), createTindakLanjut);
 
 /**
  * @swagger
@@ -203,7 +205,7 @@ router.post("/", createTindakLanjut);
  *       500:
  *         description: Failed to update tidak lanjut
  */
-router.put("/:id", updateTindakLanjut);
+router.put("/:id", verifyToken, checkRole(["admin"]), updateTindakLanjut);
 
 /**
  * @swagger
@@ -242,6 +244,7 @@ router.put("/:id", updateTindakLanjut);
  *       500:
  *         description: Failed to delete tidak lanjut
  */
-router.delete("/:id", deleteTindakLanjut);
+router.delete("/:id", verifyToken, checkRole(["admin"]), deleteTindakLanjut);
 
 module.exports = router;
+

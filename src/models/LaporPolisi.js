@@ -102,6 +102,12 @@ const LaporanPolisi = sequelize.define(
             allowNull: true,
         },
 
+        user_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            comment: "FK ke users — siapa yang menginput laporan ini",
+        },
+
         is_active: {
             type: DataTypes.BOOLEAN,
             allowNull: false,

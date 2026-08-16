@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const {
     getPolres,
@@ -9,6 +9,8 @@ const {
 } = require("../controllers/polres.controller");
 
 const router = express.Router();
+
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -95,7 +97,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to retrieve polres
  */
-router.get("/", getPolres);
+router.get("/", verifyToken, getPolres);
 
 /**
  * @swagger
@@ -133,7 +135,7 @@ router.get("/", getPolres);
  *       500:
  *         description: Failed to retrieve polres
  */
-router.get("/:id", getPolresById);
+router.get("/:id", verifyToken, getPolresById);
 
 /**
  * @swagger
@@ -173,7 +175,7 @@ router.get("/:id", getPolresById);
  *       500:
  *         description: Failed to create polres
  */
-router.post("/", createPolres);
+router.post("/", verifyToken, checkRole(["admin"]), createPolres);
 
 /**
  * @swagger
@@ -221,7 +223,7 @@ router.post("/", createPolres);
  *       500:
  *         description: Failed to update polres
  */
-router.put("/:id", updatePolres);
+router.put("/:id", verifyToken, checkRole(["admin"]), updatePolres);
 
 /**
  * @swagger
@@ -260,6 +262,7 @@ router.put("/:id", updatePolres);
  *       500:
  *         description: Failed to delete polres
  */
-router.delete("/:id", deletePolres);
+router.delete("/:id", verifyToken, checkRole(["admin"]), deletePolres);
 
 module.exports = router;
+

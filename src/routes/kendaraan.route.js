@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const {
     getKendaraan,
@@ -10,14 +10,17 @@ const {
 
 const router = express.Router();
 
-router.get("/", getKendaraan);
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
-router.get("/:id", getKendaraanById);
+router.get("/", verifyToken, getKendaraan);
 
-router.post("/", createKendaraan);
+router.get("/:id", verifyToken, getKendaraanById);
 
-router.put("/:id", updateKendaraan);
+router.post("/", verifyToken, createKendaraan);
 
-router.delete("/:id", deleteKendaraan);
+router.put("/:id", verifyToken, updateKendaraan);
+
+router.delete("/:id", verifyToken, checkRole(["admin"]), deleteKendaraan);
 
 module.exports = router;
+

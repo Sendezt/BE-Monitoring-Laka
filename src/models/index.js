@@ -13,9 +13,10 @@ const SifatLaka = require("./SifatLaka");
 const Keterjaminan = require("./Keterjaminan");
 const JenisKendaraan = require("./JenisKendaraan");
 const JenisJaminan = require("./JenisJaminan");
-const LaporanPolisi = require("./LaporPolisi")
+const LaporanPolisi = require("./LaporPolisi");
 const Kendaraan = require("./Kendaraan");
 const Korban = require("./Korban");
+const ActivityLog = require("./ActivityLog");
 
 // =========================
 // Wilayah → User
@@ -150,7 +151,7 @@ Keterjaminan.hasMany(LaporanPolisi, {
 
 LaporanPolisi.belongsTo(Keterjaminan, {
   foreignKey: "keterjaminan_id",
-  as: "laporanPolisi",
+  as: "keterjaminan", // FIX: alias yang benar
 });
 
 // Sifat Laka -> LaporanPolisi
@@ -230,6 +231,33 @@ Korban.belongsTo(Kendaraan, {
   as: "kendaraan",
 });
 
+// =========================
+// User → LaporanPolisi
+// =========================
+
+User.hasMany(LaporanPolisi, {
+  foreignKey: "user_id",
+  as: "laporanPolisi",
+});
+
+LaporanPolisi.belongsTo(User, {
+  foreignKey: "user_id",
+  as: "user",
+});
+
+// =========================
+// User → ActivityLog
+// =========================
+
+User.hasMany(ActivityLog, {
+  foreignKey: "user_id",
+  as: "activityLogs",
+});
+
+ActivityLog.belongsTo(User, {
+  foreignKey: "user_id",
+  as: "user",
+});
 
 module.exports = {
   User,
@@ -250,4 +278,5 @@ module.exports = {
   LaporanPolisi,
   Kendaraan,
   Korban,
+  ActivityLog,
 };

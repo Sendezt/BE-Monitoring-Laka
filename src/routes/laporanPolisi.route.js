@@ -6,7 +6,13 @@ const {
     createLaporanPolisi,
     updateLaporanPolisi,
     deleteLaporanPolisi,
+    getStatistikKomparasi,
 } = require("../controllers/laporanPolisi.controller");
+
+const {
+    verifyToken,
+    checkRole,
+} = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
@@ -206,18 +212,72 @@ const router = express.Router();
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/LaporanPolisi'
+ *       401:
+ *         description: Unauthorized - Token diperlukan
  *       500:
  *         description: Failed to retrieve laporan polisi
  */
-router.get("/", getLaporanPolisi);
+router.get("/", verifyToken, getLaporanPolisi);
+
+/**
+ * @swagger
+ * /api/laporan-polisi/statistik/komparasi:
+ *   get:
+ *     summary: Komparasi statistik 2 periode
+ *     description: Bandingkan jumlah laka, korban, dan laka tunggal antara 2 rentang tanggal berbeda.
+ *     tags: [Laporan Polisi]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: start1
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         example: "2026-07-01"
+ *       - in: query
+ *         name: end1
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         example: "2026-07-31"
+ *       - in: query
+ *         name: start2
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         example: "2026-08-01"
+ *       - in: query
+ *         name: end2
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         example: "2026-08-16"
+ *     responses:
+ *       200:
+ *         description: Statistik komparasi berhasil diambil
+ *       400:
+ *         description: Parameter tidak lengkap
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to retrieve statistik komparasi
+ */
+router.get("/statistik/komparasi", verifyToken, getStatistikKomparasi);
 
 /**
  * @swagger
  * /api/laporan-polisi/{id}:
  *   get:
  *     summary: Get laporan polisi by ID
- *     description: Retrieve a single laporan polisi by its ID. Returns 404 if not found or inactive.
+ *     description: Retrieve a single laporan polisi by its ID with nested kendaraan & korban. Returns 404 if not found or inactive. Pegawai hanya bisa akses laporan di wilayah sendiri.
  *     tags: [Laporan Polisi]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -242,20 +302,26 @@ router.get("/", getLaporanPolisi);
  *                   example: Laporan polisi retrieved successfully
  *                 data:
  *                   $ref: '#/components/schemas/LaporanPolisi'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - beda wilayah
  *       404:
  *         description: Laporan polisi not found
  *       500:
  *         description: Failed to retrieve laporan polisi
  */
-router.get("/:id", getLaporanPolisiById);
+router.get("/:id", verifyToken, getLaporanPolisiById);
 
 /**
  * @swagger
  * /api/laporan-polisi:
  *   post:
- *     summary: Create a new laporan polisi
- *     description: Create a new laporan polisi record. Returns 409 if a laporan polisi with the same no_lp already exists.
+ *     summary: Create laporan polisi (All-in-One)
+ *     description: Buat laporan polisi beserta data kendaraan dan korban dalam 1 request transaksional. Jika ada error, seluruh data di-rollback.
  *     tags: [Laporan Polisi]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -264,7 +330,7 @@ router.get("/:id", getLaporanPolisiById);
  *             $ref: '#/components/schemas/LaporanPolisiRequest'
  *     responses:
  *       201:
- *         description: Laporan polisi created successfully
+ *         description: Laporan polisi, kendaraan, dan korban created successfully
  *         content:
  *           application/json:
  *             schema:
@@ -275,25 +341,27 @@ router.get("/:id", getLaporanPolisiById);
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: Laporan polisi created successfully
+ *                   example: Laporan polisi, kendaraan, dan korban created successfully
  *                 data:
  *                   $ref: '#/components/schemas/LaporanPolisi'
  *       400:
  *         description: Required fields are missing
- *       409:
- *         description: Nomor LP already exists
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Failed to create laporan polisi
  */
-router.post("/", createLaporanPolisi);
+router.post("/", verifyToken, createLaporanPolisi);
 
 /**
  * @swagger
  * /api/laporan-polisi/{id}:
  *   put:
  *     summary: Update a laporan polisi
- *     description: Update an existing laporan polisi by ID. Returns 404 if not found, 409 if the new no_lp conflicts with another laporan polisi.
+ *     description: Update laporan polisi by ID. Pegawai hanya bisa update laporan di wilayah sendiri.
  *     tags: [Laporan Polisi]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -311,37 +379,28 @@ router.post("/", createLaporanPolisi);
  *     responses:
  *       200:
  *         description: Laporan polisi updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Laporan polisi updated successfully
- *                 data:
- *                   $ref: '#/components/schemas/LaporanPolisi'
  *       400:
  *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - beda wilayah
  *       404:
  *         description: Laporan polisi not found
- *       409:
- *         description: Nomor LP already exists
  *       500:
  *         description: Failed to update laporan polisi
  */
-router.put("/:id", updateLaporanPolisi);
+router.put("/:id", verifyToken, updateLaporanPolisi);
 
 /**
  * @swagger
  * /api/laporan-polisi/{id}:
  *   delete:
- *     summary: Delete a laporan polisi
- *     description: Soft-delete a laporan polisi by setting is_active to false. Returns 404 if not found or already inactive.
+ *     summary: Delete a laporan polisi (Admin only)
+ *     description: Soft-delete laporan + cascade ke kendaraan & korban dalam 1 transaksi. Hanya admin yang bisa menghapus.
  *     tags: [Laporan Polisi]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -353,25 +412,15 @@ router.put("/:id", updateLaporanPolisi);
  *     responses:
  *       200:
  *         description: Laporan polisi deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Laporan polisi deleted successfully
- *                 data:
- *                   type: "null"
- *                   example: null
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - hanya admin
  *       404:
  *         description: Laporan polisi not found
  *       500:
  *         description: Failed to delete laporan polisi
  */
-router.delete("/:id", deleteLaporanPolisi);
+router.delete("/:id", verifyToken, checkRole(["admin"]), deleteLaporanPolisi);
 
-module.exports = router;
+module.exports = router;

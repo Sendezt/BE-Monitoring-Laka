@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const {
     getKeterjaminan,
@@ -9,6 +9,8 @@ const {
 } = require("../controllers/keterjaminan.controller");
 
 const router = express.Router();
+
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -79,7 +81,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to retrieve keterjaminan
  */
-router.get("/", getKeterjaminan);
+router.get("/", verifyToken, getKeterjaminan);
 
 /**
  * @swagger
@@ -117,7 +119,7 @@ router.get("/", getKeterjaminan);
  *       500:
  *         description: Failed to retrieve keterjaminan
  */
-router.get("/:id", getKeterjaminanById);
+router.get("/:id", verifyToken, getKeterjaminanById);
 
 /**
  * @swagger
@@ -155,7 +157,7 @@ router.get("/:id", getKeterjaminanById);
  *       500:
  *         description: Failed to create keterjaminan
  */
-router.post("/", createKeterjaminan);
+router.post("/", verifyToken, checkRole(["admin"]), createKeterjaminan);
 
 /**
  * @swagger
@@ -203,7 +205,7 @@ router.post("/", createKeterjaminan);
  *       500:
  *         description: Failed to update keterjaminan
  */
-router.put("/:id", updateKeterjaminan);
+router.put("/:id", verifyToken, checkRole(["admin"]), updateKeterjaminan);
 
 /**
  * @swagger
@@ -242,6 +244,7 @@ router.put("/:id", updateKeterjaminan);
  *       500:
  *         description: Failed to delete keterjaminan
  */
-router.delete("/:id", deleteKeterjaminan);
+router.delete("/:id", verifyToken, checkRole(["admin"]), deleteKeterjaminan);
 
 module.exports = router;
+

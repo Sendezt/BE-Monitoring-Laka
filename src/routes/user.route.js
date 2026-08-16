@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const {
   getUsers,
@@ -7,6 +7,8 @@ const {
 } = require("../controllers/user.controller");
 
 const router = express.Router();
+
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -42,7 +44,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to retrieve users
  */
-router.get("/", getUsers);
+router.get("/", verifyToken, checkRole(["admin"]), getUsers);
 
 /**
  * @swagger
@@ -79,7 +81,7 @@ router.get("/", getUsers);
  *       500:
  *         description: Failed to retrieve user
  */
-router.get("/:id", getUserById);
+router.get("/:id", verifyToken, checkRole(["admin"]), getUserById);
 
 /**
  * @swagger
@@ -116,6 +118,8 @@ router.get("/:id", getUserById);
  *       500:
  *         description: Failed to create user
  */
-router.post("/", createUser);
+router.post("/", verifyToken, checkRole(["admin"]), createUser);
 
 module.exports = router;
+
+

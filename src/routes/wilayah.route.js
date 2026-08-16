@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const {
     getWilayah,
@@ -9,6 +9,8 @@ const {
 } = require("../controllers/wilayah.controller");
 
 const router = express.Router();
+
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -79,7 +81,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to retrieve wilayah
  */
-router.get("/", getWilayah);
+router.get("/", verifyToken, getWilayah);
 
 /**
  * @swagger
@@ -117,7 +119,7 @@ router.get("/", getWilayah);
  *       500:
  *         description: Failed to retrieve wilayah
  */
-router.get("/:id", getWilayahById);
+router.get("/:id", verifyToken, getWilayahById);
 
 /**
  * @swagger
@@ -155,7 +157,7 @@ router.get("/:id", getWilayahById);
  *       500:
  *         description: Failed to create wilayah
  */
-router.post("/", createWilayah);
+router.post("/", verifyToken, checkRole(["admin"]), createWilayah);
 
 /**
  * @swagger
@@ -203,7 +205,7 @@ router.post("/", createWilayah);
  *       500:
  *         description: Failed to update wilayah
  */
-router.put("/:id", updateWilayah);
+router.put("/:id", verifyToken, checkRole(["admin"]), updateWilayah);
 
 /**
  * @swagger
@@ -242,6 +244,7 @@ router.put("/:id", updateWilayah);
  *       500:
  *         description: Failed to delete wilayah
  */
-router.delete("/:id", deleteWilayah);
+router.delete("/:id", verifyToken, checkRole(["admin"]), deleteWilayah);
 
 module.exports = router;
+

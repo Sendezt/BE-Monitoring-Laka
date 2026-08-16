@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const {
   getSifatLaka,
@@ -9,6 +9,8 @@ const {
 } = require("../controllers/sifatLaka.controller");
 
 const router = express.Router();
+
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -79,7 +81,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to retrieve sifat laka
  */
-router.get("/", getSifatLaka);
+router.get("/", verifyToken, getSifatLaka);
 
 /**
  * @swagger
@@ -117,7 +119,7 @@ router.get("/", getSifatLaka);
  *       500:
  *         description: Failed to retrieve sifat laka
  */
-router.get("/:id", getSifatLakaById);
+router.get("/:id", verifyToken, getSifatLakaById);
 
 /**
  * @swagger
@@ -155,7 +157,7 @@ router.get("/:id", getSifatLakaById);
  *       500:
  *         description: Failed to create sifat laka
  */
-router.post("/", createSifatLaka);
+router.post("/", verifyToken, checkRole(["admin"]), createSifatLaka);
 
 /**
  * @swagger
@@ -203,7 +205,7 @@ router.post("/", createSifatLaka);
  *       500:
  *         description: Failed to update sifat laka
  */
-router.put("/:id", updateSifatLaka);
+router.put("/:id", verifyToken, checkRole(["admin"]), updateSifatLaka);
 
 /**
  * @swagger
@@ -242,6 +244,8 @@ router.put("/:id", updateSifatLaka);
  *       500:
  *         description: Failed to delete sifat laka
  */
-router.delete("/:id", deleteSifatLaka);
+router.delete("/:id", verifyToken, checkRole(["admin"]), deleteSifatLaka);
 
 module.exports = router;
+
+

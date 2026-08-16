@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const {
   getKasusTabrakKecelakaan,
@@ -9,6 +9,8 @@ const {
 } = require("../controllers/kasustabrakkecelakaan.controller");
 
 const router = express.Router();
+
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -79,7 +81,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to retrieve kasus tabrak kecelakaan
  */
-router.get("/", getKasusTabrakKecelakaan);
+router.get("/", verifyToken, getKasusTabrakKecelakaan);
 
 /**
  * @swagger
@@ -117,7 +119,7 @@ router.get("/", getKasusTabrakKecelakaan);
  *       500:
  *         description: Failed to retrieve kasus tabrak kecelakaan
  */
-router.get("/:id", getKasusTabrakKecelakaanById);
+router.get("/:id", verifyToken, getKasusTabrakKecelakaanById);
 
 /**
  * @swagger
@@ -155,7 +157,7 @@ router.get("/:id", getKasusTabrakKecelakaanById);
  *       500:
  *         description: Failed to create kasus tabrak kecelakaan
  */
-router.post("/", createKasusTabrakKecelakaan);
+router.post("/", verifyToken, checkRole(["admin"]), createKasusTabrakKecelakaan);
 
 /**
  * @swagger
@@ -203,7 +205,7 @@ router.post("/", createKasusTabrakKecelakaan);
  *       500:
  *         description: Failed to update kasus tabrak kecelakaan
  */
-router.put("/:id", updateKasusTabrakKecelakaan);
+router.put("/:id", verifyToken, checkRole(["admin"]), updateKasusTabrakKecelakaan);
 
 /**
  * @swagger
@@ -242,6 +244,8 @@ router.put("/:id", updateKasusTabrakKecelakaan);
  *       500:
  *         description: Failed to delete kasus tabrak kecelakaan
  */
-router.delete("/:id", deleteKasusTabrakKecelakaan);
+router.delete("/:id", verifyToken, checkRole(["admin"]), deleteKasusTabrakKecelakaan);
 
 module.exports = router;
+
+

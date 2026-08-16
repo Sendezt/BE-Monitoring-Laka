@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const {
     getRumahSakit,
@@ -9,6 +9,8 @@ const {
 } = require("../controllers/rumahSakit.controller");
 
 const router = express.Router();
+
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -116,7 +118,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to retrieve rumah sakit
  */
-router.get("/", getRumahSakit);
+router.get("/", verifyToken, getRumahSakit);
 
 /**
  * @swagger
@@ -154,7 +156,7 @@ router.get("/", getRumahSakit);
  *       500:
  *         description: Failed to retrieve rumah sakit
  */
-router.get("/:id", getRumahSakitById);
+router.get("/:id", verifyToken, getRumahSakitById);
 
 /**
  * @swagger
@@ -194,7 +196,7 @@ router.get("/:id", getRumahSakitById);
  *       500:
  *         description: Failed to create rumah sakit
  */
-router.post("/", createRumahSakit);
+router.post("/", verifyToken, checkRole(["admin"]), createRumahSakit);
 
 /**
  * @swagger
@@ -242,7 +244,7 @@ router.post("/", createRumahSakit);
  *       500:
  *         description: Failed to update rumah sakit
  */
-router.put("/:id", updateRumahSakit);
+router.put("/:id", verifyToken, checkRole(["admin"]), updateRumahSakit);
 
 /**
  * @swagger
@@ -281,6 +283,7 @@ router.put("/:id", updateRumahSakit);
  *       500:
  *         description: Failed to delete rumah sakit
  */
-router.delete("/:id", deleteRumahSakit);
+router.delete("/:id", verifyToken, checkRole(["admin"]), deleteRumahSakit);
 
 module.exports = router;
+

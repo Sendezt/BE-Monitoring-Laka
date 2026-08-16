@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const {
     getCidera,
@@ -9,6 +9,8 @@ const {
 } = require("../controllers/cidera.controller");
 
 const router = express.Router();
+
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -79,7 +81,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to retrieve cidera
  */
-router.get("/", getCidera);
+router.get("/", verifyToken, getCidera);
 
 /**
  * @swagger
@@ -117,7 +119,7 @@ router.get("/", getCidera);
  *       500:
  *         description: Failed to retrieve cidera
  */
-router.get("/:id", getCideraById);
+router.get("/:id", verifyToken, getCideraById);
 
 /**
  * @swagger
@@ -155,7 +157,7 @@ router.get("/:id", getCideraById);
  *       500:
  *         description: Failed to create cidera
  */
-router.post("/", createCidera);
+router.post("/", verifyToken, checkRole(["admin"]), createCidera);
 
 /**
  * @swagger
@@ -203,7 +205,7 @@ router.post("/", createCidera);
  *       500:
  *         description: Failed to update cidera
  */
-router.put("/:id", updateCidera);
+router.put("/:id", verifyToken, checkRole(["admin"]), updateCidera);
 
 /**
  * @swagger
@@ -242,6 +244,7 @@ router.put("/:id", updateCidera);
  *       500:
  *         description: Failed to delete cidera
  */
-router.delete("/:id", deleteCidera);
+router.delete("/:id", verifyToken, checkRole(["admin"]), deleteCidera);
 
 module.exports = router;
+

@@ -1,9 +1,7 @@
-const successResponse = (res, statusCode, message, data = null) => {
-  return res.status(statusCode).json({
-    success: true,
-    message,
-    data,
-  });
+const successResponse = (res, statusCode, message, data = null, meta = null) => {
+  const body = { success: true, message, data };
+  if (meta) body.meta = meta;
+  return res.status(statusCode).json(body);
 };
 
 const errorResponse = (res, statusCode, message, errors = null) => {

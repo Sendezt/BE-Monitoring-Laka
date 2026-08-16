@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const {
   getFaktorPenyebabLaka,
@@ -9,6 +9,8 @@ const {
 } = require("../controllers/faktorpenyebablaka.controller");
 
 const router = express.Router();
+
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -79,7 +81,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to retrieve faktor penyebab laka
  */
-router.get("/", getFaktorPenyebabLaka);
+router.get("/", verifyToken, getFaktorPenyebabLaka);
 
 /**
  * @swagger
@@ -117,7 +119,7 @@ router.get("/", getFaktorPenyebabLaka);
  *       500:
  *         description: Failed to retrieve faktor penyebab laka
  */
-router.get("/:id", getFaktorPenyebabLakaById);
+router.get("/:id", verifyToken, getFaktorPenyebabLakaById);
 
 /**
  * @swagger
@@ -155,7 +157,7 @@ router.get("/:id", getFaktorPenyebabLakaById);
  *       500:
  *         description: Failed to create faktor penyebab laka
  */
-router.post("/", createFaktorPenyebabLaka);
+router.post("/", verifyToken, checkRole(["admin"]), createFaktorPenyebabLaka);
 
 /**
  * @swagger
@@ -203,7 +205,7 @@ router.post("/", createFaktorPenyebabLaka);
  *       500:
  *         description: Failed to update faktor penyebab laka
  */
-router.put("/:id", updateFaktorPenyebabLaka);
+router.put("/:id", verifyToken, checkRole(["admin"]), updateFaktorPenyebabLaka);
 
 /**
  * @swagger
@@ -242,6 +244,8 @@ router.put("/:id", updateFaktorPenyebabLaka);
  *       500:
  *         description: Failed to delete faktor penyebab laka
  */
-router.delete("/:id", deleteFaktorPenyebabLaka);
+router.delete("/:id", verifyToken, checkRole(["admin"]), deleteFaktorPenyebabLaka);
 
 module.exports = router;
+
+

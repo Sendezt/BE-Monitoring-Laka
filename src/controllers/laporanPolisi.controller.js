@@ -1,4 +1,25 @@
-const { LaporanPolisi } = require("../models");
+// src/controllers/laporanPolisi.controller.js
+const { Op } = require("sequelize");
+const sequelize = require("../config/database");
+
+const {
+    LaporanPolisi,
+    Kendaraan,
+    Korban,
+    Kecamatan,
+    Kelurahan,
+    RumahSakit,
+    TindakLanjut,
+    JenisJaminan,
+    Keterjaminan,
+    SifatLaka,
+    KasusTabrakKecelakaan,
+    FaktorPenyebabLaka,
+    JenisKendaraan,
+    Profesi,
+    Cidera,
+    ActivityLog,
+} = require("../models");
 
 const {
     successResponse,
@@ -7,53 +28,211 @@ const {
 
 const logger = require("../utils/logger");
 
+// ─────────────────────────────────────────────────────────────
+// Helper: catat activity log
+// ─────────────────────────────────────────────────────────────
+const logActivity = async (aksi, tabel, record_id, data_lama, data_baru, req, t) => {
+    try {
+        await ActivityLog.create(
+            {
+                aksi,
+                tabel,
+                record_id,
+                data_lama: data_lama ? JSON.stringify(data_lama) : null,
+                data_baru: data_baru ? JSON.stringify(data_baru) : null,
+                ip_address: req.ip || req.headers["x-forwarded-for"] || null,
+                waktu: new Date(),
+                user_id: req.user?.id || null,
+            },
+            { transaction: t }
+        );
+    } catch (err) {
+        logger.error("Activity log error", err);
+    }
+};
+
+// ─────────────────────────────────────────────────────────────
+// Helper: include untuk GET /:id (nested detail)
+// ─────────────────────────────────────────────────────────────
+const detailInclude = [
+    {
+        model: Kecamatan,
+        as: "kecamatan",
+        attributes: ["id", "nama"],
+    },
+    {
+        model: Kelurahan,
+        as: "kelurahan",
+        attributes: ["id", "nama"],
+    },
+    {
+        model: RumahSakit,
+        as: "rumahSakit",
+        attributes: ["id", "nama"],
+    },
+    {
+        model: TindakLanjut,
+        as: "tindakLanjut",
+        attributes: ["id", "nama"],
+    },
+    {
+        model: JenisJaminan,
+        as: "jenisJaminan",
+        attributes: ["id", "nama"],
+    },
+    {
+        model: Keterjaminan,
+        as: "keterjaminan",
+        attributes: ["id", "nama"],
+    },
+    {
+        model: SifatLaka,
+        as: "sifatLaka",
+        attributes: ["id", "nama"],
+    },
+    {
+        model: KasusTabrakKecelakaan,
+        as: "kasusTabrakKecelakaan",
+        attributes: ["id", "nama"],
+    },
+    {
+        model: FaktorPenyebabLaka,
+        as: "faktorPenyebabLaka",
+        attributes: ["id", "nama"],
+    },
+    {
+        model: Kendaraan,
+        as: "kendaraan",
+        where: { is_active: true },
+        required: false,
+        attributes: ["id", "peran", "nopol", "masa_laku_sw"],
+        include: [
+            {
+                model: JenisKendaraan,
+                as: "jenisKendaraan",
+                attributes: ["id", "nama"],
+            },
+        ],
+    },
+    {
+        model: Korban,
+        as: "korban",
+        where: { is_active: true },
+        required: false,
+        attributes: ["id", "nama", "usia", "kendaraan_id"],
+        include: [
+            {
+                model: Profesi,
+                as: "profesi",
+                attributes: ["id", "nama"],
+            },
+            {
+                model: Cidera,
+                as: "cidera",
+                attributes: ["id", "nama"],
+            },
+        ],
+    },
+];
+
+// ─────────────────────────────────────────────────────────────
 // GET /api/laporan-polisi
+// Query params: from, to, no_lp, kecamatan_id, page, limit
+// ─────────────────────────────────────────────────────────────
 const getLaporanPolisi = async (req, res) => {
     try {
-        const laporanPolisi = await LaporanPolisi.findAll({
-            where: {
-                is_active: true,
-            },
+        const { from, to, no_lp, kecamatan_id, page = 1, limit = 10 } = req.query;
+
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+        const offset = (pageNum - 1) * limitNum;
+
+        // Base filter
+        const where = { is_active: true };
+
+        if (from) where.tanggal_laka = { ...where.tanggal_laka, [Op.gte]: from };
+        if (to) where.tanggal_laka = { ...where.tanggal_laka, [Op.lte]: to };
+        if (no_lp) where.no_lp = { [Op.like]: `%${String(no_lp).trim()}%` };
+        if (kecamatan_id) where.kecamatan_id = Number(kecamatan_id);
+
+        // Scope wilayah otomatis untuk pegawai
+        const includeKecamatan = {
+            model: Kecamatan,
+            as: "kecamatan",
+            attributes: ["id", "nama"],
+        };
+
+        if (req.user?.role === "pegawai") {
+            includeKecamatan.required = true;
+            includeKecamatan.include = [
+                {
+                    model: require("../models/Polres"),
+                    as: "polres",
+                    attributes: [],
+                    where: { wilayah_id: req.user.wilayah_id },
+                    required: true,
+                },
+            ];
+        }
+
+        const { count, rows } = await LaporanPolisi.findAndCountAll({
+            where,
+            include: [
+                includeKecamatan,
+                {
+                    model: Kelurahan,
+                    as: "kelurahan",
+                    attributes: ["id", "nama"],
+                },
+            ],
             order: [["tanggal_laka", "DESC"]],
+            limit: limitNum,
+            offset,
+            distinct: true,
         });
 
         return successResponse(
             res,
             200,
             "Laporan polisi retrieved successfully",
-            laporanPolisi
+            rows,
+            {
+                total: count,
+                page: pageNum,
+                limit: limitNum,
+                total_pages: Math.ceil(count / limitNum),
+            }
         );
     } catch (error) {
-        logger.error(
-            "Get laporan polisi error",
-            error
-        );
-
-        return errorResponse(
-            res,
-            500,
-            "Failed to retrieve laporan polisi"
-        );
+        logger.error("Get laporan polisi error", error);
+        return errorResponse(res, 500, "Failed to retrieve laporan polisi");
     }
 };
 
-// GET /api/laporan-polisi/:id
+// ─────────────────────────────────────────────────────────────
+// GET /api/laporan-polisi/:id (nested detail)
+// ─────────────────────────────────────────────────────────────
 const getLaporanPolisiById = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const laporanPolisi =
-            await LaporanPolisi.findByPk(id);
+        const laporanPolisi = await LaporanPolisi.findOne({
+            where: { id, is_active: true },
+            include: detailInclude,
+        });
 
-        if (
-            !laporanPolisi ||
-            !laporanPolisi.is_active
-        ) {
-            return errorResponse(
-                res,
-                404,
-                "Laporan polisi not found"
-            );
+        if (!laporanPolisi) {
+            return errorResponse(res, 404, "Laporan polisi not found");
+        }
+
+        // Scope wilayah untuk pegawai
+        if (req.user?.role === "pegawai") {
+            const kecamatan = await Kecamatan.findByPk(laporanPolisi.kecamatan_id, {
+                include: [{ model: require("../models/Polres"), as: "polres", attributes: ["wilayah_id"] }],
+            });
+            if (!kecamatan || kecamatan.polres?.wilayah_id !== req.user.wilayah_id) {
+                return errorResponse(res, 403, "Anda tidak memiliki akses ke wilayah lain");
+            }
         }
 
         return successResponse(
@@ -63,28 +242,23 @@ const getLaporanPolisiById = async (req, res) => {
             laporanPolisi
         );
     } catch (error) {
-        logger.error(
-            "Get laporan polisi by ID error",
-            error
-        );
-
-        return errorResponse(
-            res,
-            500,
-            "Failed to retrieve laporan polisi"
-        );
+        logger.error("Get laporan polisi by ID error", error);
+        return errorResponse(res, 500, "Failed to retrieve laporan polisi");
     }
 };
 
-// POST /api/laporan-polisi
+// ─────────────────────────────────────────────────────────────
+// POST /api/laporan-polisi (All-in-One Transactional)
+// Payload: { ...laporan, kendaraan: [...], korban: [...] }
+// ─────────────────────────────────────────────────────────────
 const createLaporanPolisi = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
         const {
             no_lp,
             tanggal_laka,
             hari_kejadian,
             tanggal_lp,
-            telat_lp,
             kecamatan_id,
             kelurahan_id,
             lokasi_laka,
@@ -98,263 +272,277 @@ const createLaporanPolisi = async (req, res) => {
             faktor_penyebab_laka_id,
             sifat_laka_id,
             keterangan,
+            kendaraan = [],
+            korban = [],
         } = req.body;
 
-        // Required fields
+        // Validasi field wajib
         if (
             !no_lp ||
             !tanggal_laka ||
             !hari_kejadian ||
             !tanggal_lp ||
-            kecamatan_id === undefined ||
-            kecamatan_id === null ||
-            kelurahan_id === undefined ||
-            kelurahan_id === null ||
+            kecamatan_id === undefined || kecamatan_id === null ||
+            kelurahan_id === undefined || kelurahan_id === null ||
             !lokasi_laka
         ) {
+            await t.rollback();
             return errorResponse(
                 res,
                 400,
-                "no_lp, tanggal_laka, hari_kejadian, tanggal_lp, kecamatan_id, kelurahan_id, and lokasi_laka are required"
+                "no_lp, tanggal_laka, hari_kejadian, tanggal_lp, kecamatan_id, kelurahan_id, dan lokasi_laka wajib diisi"
             );
         }
 
-        // Check duplicate nomor LP
-        const existingLaporan =
-            await LaporanPolisi.findOne({
-                where: {
-                    no_lp,
-                },
-            });
+        // Hitung telat_lp otomatis dari selisih hari
+        const diffMs = new Date(tanggal_lp) - new Date(tanggal_laka);
+        const telat_lp = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
 
-        if (existingLaporan) {
-            return errorResponse(
-                res,
-                409,
-                "Nomor LP already exists"
-            );
-        }
-
-        const laporanPolisi =
-            await LaporanPolisi.create({
-                no_lp,
+        // 1. Insert LaporanPolisi
+        const laporanPolisi = await LaporanPolisi.create(
+            {
+                no_lp: String(no_lp).trim(),
                 tanggal_laka,
-                hari_kejadian,
+                hari_kejadian: String(hari_kejadian).trim(),
                 tanggal_lp,
-                telat_lp: telat_lp ?? 0,
-                kecamatan_id,
-                kelurahan_id,
-                lokasi_laka,
-                rumah_sakit_id:
-                    rumah_sakit_id ?? null,
-                rumah_sakit_wilayah:
-                    rumah_sakit_wilayah ?? null,
-                laka_tunggal:
-                    laka_tunggal ?? false,
-                tindak_lanjut_id:
-                    tindak_lanjut_id ?? null,
-                jenis_jaminan_id:
-                    jenis_jaminan_id ?? null,
-                keterjaminan_id:
-                    keterjaminan_id ?? null,
-                kasus_tabrak_kecelakaan_id:
-                    kasus_tabrak_kecelakaan_id ?? null,
-                faktor_penyebab_laka_id:
-                    faktor_penyebab_laka_id ?? null,
-                sifat_laka_id:
-                    sifat_laka_id ?? null,
-                keterangan:
-                    keterangan ?? null,
+                telat_lp,
+                kecamatan_id: Number(kecamatan_id),
+                kelurahan_id: Number(kelurahan_id),
+                lokasi_laka: String(lokasi_laka).trim(),
+                rumah_sakit_id: rumah_sakit_id ? Number(rumah_sakit_id) : null,
+                rumah_sakit_wilayah: rumah_sakit_wilayah ?? null,
+                laka_tunggal: laka_tunggal ?? false,
+                tindak_lanjut_id: tindak_lanjut_id ? Number(tindak_lanjut_id) : null,
+                jenis_jaminan_id: jenis_jaminan_id ? Number(jenis_jaminan_id) : null,
+                keterjaminan_id: keterjaminan_id ? Number(keterjaminan_id) : null,
+                kasus_tabrak_kecelakaan_id: kasus_tabrak_kecelakaan_id ? Number(kasus_tabrak_kecelakaan_id) : null,
+                faktor_penyebab_laka_id: faktor_penyebab_laka_id ? Number(faktor_penyebab_laka_id) : null,
+                sifat_laka_id: sifat_laka_id ? Number(sifat_laka_id) : null,
+                keterangan: keterangan ?? null,
+                user_id: req.user?.id || null,
                 is_active: true,
-            });
+            },
+            { transaction: t }
+        );
+
+        // 2. Insert Kendaraan[] — petakan index ke DB ID
+        const kendaraanIndexMap = {}; // { index: kendaraan_id }
+        for (let i = 0; i < kendaraan.length; i++) {
+            const k = kendaraan[i];
+            const newKendaraan = await Kendaraan.create(
+                {
+                    laporan_polisi_id: laporanPolisi.id,
+                    peran: k.peran,
+                    jenis_kendaraan_id: k.jenis_kendaraan_id ? Number(k.jenis_kendaraan_id) : null,
+                    nopol: k.nopol ? String(k.nopol).trim() : null,
+                    masa_laku_sw: k.masa_laku_sw ?? null,
+                    is_active: true,
+                },
+                { transaction: t }
+            );
+            kendaraanIndexMap[i] = newKendaraan.id;
+        }
+
+        // 3. Insert Korban[] — resolusi kendaraan_index ke kendaraan_id
+        const savedKorban = [];
+        for (const krb of korban) {
+            const resolvedKendaraanId =
+                krb.kendaraan_index !== undefined && krb.kendaraan_index !== null
+                    ? kendaraanIndexMap[krb.kendaraan_index] ?? null
+                    : null;
+
+            const newKorban = await Korban.create(
+                {
+                    laporan_polisi_id: laporanPolisi.id,
+                    nama: String(krb.nama).trim(),
+                    usia: krb.usia ? Number(krb.usia) : null,
+                    profesi_id: krb.profesi_id ? Number(krb.profesi_id) : null,
+                    cidera_id: krb.cidera_id ? Number(krb.cidera_id) : null,
+                    kendaraan_id: resolvedKendaraanId,
+                    is_active: true,
+                },
+                { transaction: t }
+            );
+            savedKorban.push(newKorban);
+        }
+
+        // 4. Activity Log
+        await logActivity(
+            "CREATE",
+            "laporan_polisi",
+            laporanPolisi.id,
+            null,
+            laporanPolisi.toJSON(),
+            req,
+            t
+        );
+
+        await t.commit();
+
+        // Ambil data lengkap dengan nested untuk response
+        const result = await LaporanPolisi.findOne({
+            where: { id: laporanPolisi.id },
+            include: detailInclude,
+        });
 
         return successResponse(
             res,
             201,
-            "Laporan polisi created successfully",
-            laporanPolisi
+            "Laporan polisi, kendaraan, dan korban created successfully",
+            result
         );
     } catch (error) {
-        logger.error(
-            "Create laporan polisi error",
-            error
-        );
-
-        return errorResponse(
-            res,
-            500,
-            "Failed to create laporan polisi"
-        );
+        await t.rollback();
+        logger.error("Create laporan polisi error", error);
+        return errorResponse(res, 500, "Failed to create laporan polisi");
     }
 };
 
+// ─────────────────────────────────────────────────────────────
 // PUT /api/laporan-polisi/:id
+// ─────────────────────────────────────────────────────────────
 const updateLaporanPolisi = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
         const { id } = req.params;
 
-        const {
-            no_lp,
-            tanggal_laka,
-            hari_kejadian,
-            tanggal_lp,
-            telat_lp,
-            kecamatan_id,
-            kelurahan_id,
-            lokasi_laka,
-            rumah_sakit_id,
-            rumah_sakit_wilayah,
-            laka_tunggal,
-            tindak_lanjut_id,
-            jenis_jaminan_id,
-            keterjaminan_id,
-            kasus_tabrak_kecelakaan_id,
-            faktor_penyebab_laka_id,
-            sifat_laka_id,
-            keterangan,
-        } = req.body;
+        const laporanPolisi = await LaporanPolisi.findOne({
+            where: { id, is_active: true },
+        });
 
-        const laporanPolisi =
-            await LaporanPolisi.findByPk(id);
-
-        if (
-            !laporanPolisi ||
-            !laporanPolisi.is_active
-        ) {
-            return errorResponse(
-                res,
-                404,
-                "Laporan polisi not found"
-            );
+        if (!laporanPolisi) {
+            await t.rollback();
+            return errorResponse(res, 404, "Laporan polisi not found");
         }
 
-        // Check duplicate nomor LP
-        if (no_lp) {
-            const existingLaporan =
-                await LaporanPolisi.findOne({
-                    where: {
-                        no_lp,
-                    },
-                });
-
-            if (
-                existingLaporan &&
-                existingLaporan.id !== laporanPolisi.id
-            ) {
-                return errorResponse(
-                    res,
-                    409,
-                    "Nomor LP already exists"
-                );
+        // Scope wilayah untuk pegawai
+        if (req.user?.role === "pegawai") {
+            const kecamatan = await Kecamatan.findByPk(laporanPolisi.kecamatan_id, {
+                include: [{ model: require("../models/Polres"), as: "polres", attributes: ["wilayah_id"] }],
+            });
+            if (!kecamatan || kecamatan.polres?.wilayah_id !== req.user.wilayah_id) {
+                await t.rollback();
+                return errorResponse(res, 403, "Anda tidak memiliki akses ke wilayah lain");
             }
         }
 
-        await laporanPolisi.update({
-            no_lp:
-                no_lp ?? laporanPolisi.no_lp,
+        const {
+            no_lp, tanggal_laka, hari_kejadian, tanggal_lp,
+            kecamatan_id, kelurahan_id, lokasi_laka,
+            rumah_sakit_id, rumah_sakit_wilayah, laka_tunggal,
+            tindak_lanjut_id, jenis_jaminan_id, keterjaminan_id,
+            kasus_tabrak_kecelakaan_id, faktor_penyebab_laka_id,
+            sifat_laka_id, keterangan,
+        } = req.body;
 
-            tanggal_laka:
-                tanggal_laka ??
-                laporanPolisi.tanggal_laka,
+        const dataLama = laporanPolisi.toJSON();
 
-            hari_kejadian:
-                hari_kejadian ??
-                laporanPolisi.hari_kejadian,
+        // Hitung ulang telat_lp jika tanggal berubah
+        const newTanggalLaka = tanggal_laka ?? laporanPolisi.tanggal_laka;
+        const newTanggalLp = tanggal_lp ?? laporanPolisi.tanggal_lp;
+        const diffMs = new Date(newTanggalLp) - new Date(newTanggalLaka);
+        const newTelatLp = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
 
-            tanggal_lp:
-                tanggal_lp ??
-                laporanPolisi.tanggal_lp,
+        await laporanPolisi.update(
+            {
+                no_lp: no_lp ? String(no_lp).trim() : laporanPolisi.no_lp,
+                tanggal_laka: tanggal_laka ?? laporanPolisi.tanggal_laka,
+                hari_kejadian: hari_kejadian ? String(hari_kejadian).trim() : laporanPolisi.hari_kejadian,
+                tanggal_lp: tanggal_lp ?? laporanPolisi.tanggal_lp,
+                telat_lp: newTelatLp,
+                kecamatan_id: kecamatan_id ? Number(kecamatan_id) : laporanPolisi.kecamatan_id,
+                kelurahan_id: kelurahan_id ? Number(kelurahan_id) : laporanPolisi.kelurahan_id,
+                lokasi_laka: lokasi_laka ? String(lokasi_laka).trim() : laporanPolisi.lokasi_laka,
+                rumah_sakit_id: rumah_sakit_id !== undefined ? (rumah_sakit_id ? Number(rumah_sakit_id) : null) : laporanPolisi.rumah_sakit_id,
+                rumah_sakit_wilayah: rumah_sakit_wilayah !== undefined ? rumah_sakit_wilayah : laporanPolisi.rumah_sakit_wilayah,
+                laka_tunggal: laka_tunggal ?? laporanPolisi.laka_tunggal,
+                tindak_lanjut_id: tindak_lanjut_id !== undefined ? (tindak_lanjut_id ? Number(tindak_lanjut_id) : null) : laporanPolisi.tindak_lanjut_id,
+                jenis_jaminan_id: jenis_jaminan_id !== undefined ? (jenis_jaminan_id ? Number(jenis_jaminan_id) : null) : laporanPolisi.jenis_jaminan_id,
+                keterjaminan_id: keterjaminan_id !== undefined ? (keterjaminan_id ? Number(keterjaminan_id) : null) : laporanPolisi.keterjaminan_id,
+                kasus_tabrak_kecelakaan_id: kasus_tabrak_kecelakaan_id !== undefined ? (kasus_tabrak_kecelakaan_id ? Number(kasus_tabrak_kecelakaan_id) : null) : laporanPolisi.kasus_tabrak_kecelakaan_id,
+                faktor_penyebab_laka_id: faktor_penyebab_laka_id !== undefined ? (faktor_penyebab_laka_id ? Number(faktor_penyebab_laka_id) : null) : laporanPolisi.faktor_penyebab_laka_id,
+                sifat_laka_id: sifat_laka_id !== undefined ? (sifat_laka_id ? Number(sifat_laka_id) : null) : laporanPolisi.sifat_laka_id,
+                keterangan: keterangan !== undefined ? keterangan : laporanPolisi.keterangan,
+            },
+            { transaction: t }
+        );
 
-            telat_lp:
-                telat_lp ?? laporanPolisi.telat_lp,
+        await logActivity(
+            "UPDATE",
+            "laporan_polisi",
+            laporanPolisi.id,
+            dataLama,
+            laporanPolisi.toJSON(),
+            req,
+            t
+        );
 
-            kecamatan_id:
-                kecamatan_id ??
-                laporanPolisi.kecamatan_id,
+        await t.commit();
 
-            kelurahan_id:
-                kelurahan_id ??
-                laporanPolisi.kelurahan_id,
-
-            lokasi_laka:
-                lokasi_laka ??
-                laporanPolisi.lokasi_laka,
-
-            rumah_sakit_id:
-                rumah_sakit_id ?? null,
-
-            rumah_sakit_wilayah:
-                rumah_sakit_wilayah ?? null,
-
-            laka_tunggal:
-                laka_tunggal ??
-                laporanPolisi.laka_tunggal,
-
-            tindak_lanjut_id:
-                tindak_lanjut_id ?? null,
-
-            jenis_jaminan_id:
-                jenis_jaminan_id ?? null,
-
-            keterjaminan_id:
-                keterjaminan_id ?? null,
-
-            kasus_tabrak_kecelakaan_id:
-                kasus_tabrak_kecelakaan_id ?? null,
-
-            faktor_penyebab_laka_id:
-                faktor_penyebab_laka_id ?? null,
-
-            sifat_laka_id:
-                sifat_laka_id ?? null,
-
-            keterangan:
-                keterangan ?? null,
+        const updated = await LaporanPolisi.findOne({
+            where: { id: laporanPolisi.id },
+            include: detailInclude,
         });
 
         return successResponse(
             res,
             200,
             "Laporan polisi updated successfully",
-            laporanPolisi
+            updated
         );
     } catch (error) {
-        logger.error(
-            "Update laporan polisi error",
-            error
-        );
-
-        return errorResponse(
-            res,
-            500,
-            "Failed to update laporan polisi"
-        );
+        await t.rollback();
+        logger.error("Update laporan polisi error", error);
+        return errorResponse(res, 500, "Failed to update laporan polisi");
     }
 };
 
-// DELETE /api/laporan-polisi/:id
+// ─────────────────────────────────────────────────────────────
+// DELETE /api/laporan-polisi/:id (admin only, cascade soft delete)
+// ─────────────────────────────────────────────────────────────
 const deleteLaporanPolisi = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
         const { id } = req.params;
 
-        const laporanPolisi =
-            await LaporanPolisi.findByPk(id);
+        const laporanPolisi = await LaporanPolisi.findOne({
+            where: { id, is_active: true },
+        });
 
-        if (
-            !laporanPolisi ||
-            !laporanPolisi.is_active
-        ) {
-            return errorResponse(
-                res,
-                404,
-                "Laporan polisi not found"
-            );
+        if (!laporanPolisi) {
+            await t.rollback();
+            return errorResponse(res, 404, "Laporan polisi not found");
         }
 
-        // Soft delete
-        await laporanPolisi.update({
-            is_active: false,
-        });
+        const dataLama = laporanPolisi.toJSON();
+
+        // Cascade soft delete: laporan → kendaraan → korban (1 transaksi)
+        await Korban.update(
+            { is_active: false },
+            { where: { laporan_polisi_id: id }, transaction: t }
+        );
+
+        await Kendaraan.update(
+            { is_active: false },
+            { where: { laporan_polisi_id: id }, transaction: t }
+        );
+
+        await laporanPolisi.update(
+            { is_active: false },
+            { transaction: t }
+        );
+
+        await logActivity(
+            "DELETE",
+            "laporan_polisi",
+            laporanPolisi.id,
+            dataLama,
+            null,
+            req,
+            t
+        );
+
+        await t.commit();
 
         return successResponse(
             res,
@@ -363,16 +551,163 @@ const deleteLaporanPolisi = async (req, res) => {
             null
         );
     } catch (error) {
-        logger.error(
-            "Delete laporan polisi error",
-            error
-        );
+        await t.rollback();
+        logger.error("Delete laporan polisi error", error);
+        return errorResponse(res, 500, "Failed to delete laporan polisi");
+    }
+};
 
-        return errorResponse(
-            res,
-            500,
-            "Failed to delete laporan polisi"
-        );
+// ─────────────────────────────────────────────────────────────
+// GET /api/laporan-polisi/statistik/komparasi
+// Query params: start1, end1, start2, end2
+// ─────────────────────────────────────────────────────────────
+const getStatistikKomparasi = async (req, res) => {
+    try {
+        const { start1, end1, start2, end2 } = req.query;
+
+        if (!start1 || !end1 || !start2 || !end2) {
+            return errorResponse(
+                res,
+                400,
+                "Parameter start1, end1, start2, end2 wajib diisi (format: YYYY-MM-DD)"
+            );
+        }
+
+        const baseWhere = { is_active: true };
+
+        // Query 2 periode secara parallel (COUNT di DB)
+        const [p1Result, p2Result] = await Promise.all([
+            LaporanPolisi.findAll({
+                attributes: [
+                    [sequelize.fn("COUNT", sequelize.col("LaporanPolisi.id")), "total_laka"],
+                    [sequelize.fn("SUM", sequelize.literal("CASE WHEN laka_tunggal = 1 THEN 1 ELSE 0 END")), "laka_tunggal"],
+                ],
+                include: [
+                    {
+                        model: Korban,
+                        as: "korban",
+                        attributes: [],
+                        where: { is_active: true },
+                        required: false,
+                    },
+                ],
+                where: {
+                    ...baseWhere,
+                    tanggal_laka: { [Op.between]: [start1, end1] },
+                },
+                raw: true,
+            }),
+            LaporanPolisi.findAll({
+                attributes: [
+                    [sequelize.fn("COUNT", sequelize.col("LaporanPolisi.id")), "total_laka"],
+                    [sequelize.fn("SUM", sequelize.literal("CASE WHEN laka_tunggal = 1 THEN 1 ELSE 0 END")), "laka_tunggal"],
+                ],
+                include: [
+                    {
+                        model: Korban,
+                        as: "korban",
+                        attributes: [],
+                        where: { is_active: true },
+                        required: false,
+                    },
+                ],
+                where: {
+                    ...baseWhere,
+                    tanggal_laka: { [Op.between]: [start2, end2] },
+                },
+                raw: true,
+            }),
+        ]);
+
+        // Hitung total korban per periode secara parallel
+        const [totalKorban1, totalKorban2] = await Promise.all([
+            Korban.count({
+                include: [
+                    {
+                        model: LaporanPolisi,
+                        as: "laporanPolisi",
+                        where: {
+                            is_active: true,
+                            tanggal_laka: { [Op.between]: [start1, end1] },
+                        },
+                        required: true,
+                        attributes: [],
+                    },
+                ],
+                where: { is_active: true },
+            }),
+            Korban.count({
+                include: [
+                    {
+                        model: LaporanPolisi,
+                        as: "laporanPolisi",
+                        where: {
+                            is_active: true,
+                            tanggal_laka: { [Op.between]: [start2, end2] },
+                        },
+                        required: true,
+                        attributes: [],
+                    },
+                ],
+                where: { is_active: true },
+            }),
+        ]);
+
+        const formatTanggal = (d) =>
+            new Date(d).toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+            });
+
+        const totalLaka1 = parseInt(p1Result[0]?.total_laka || 0, 10);
+        const totalLaka2 = parseInt(p2Result[0]?.total_laka || 0, 10);
+        const lakaTunggal1 = parseInt(p1Result[0]?.laka_tunggal || 0, 10);
+        const lakaTunggal2 = parseInt(p2Result[0]?.laka_tunggal || 0, 10);
+
+        const selisihLaka = totalLaka2 - totalLaka1;
+        const selisihKorban = totalKorban2 - totalKorban1;
+
+        const persentaseLaka =
+            totalLaka1 === 0
+                ? "N/A"
+                : `${((selisihLaka / totalLaka1) * 100).toFixed(2)}%`;
+        const persentaseKorban =
+            totalKorban1 === 0
+                ? "N/A"
+                : `${((selisihKorban / totalKorban1) * 100).toFixed(2)}%`;
+
+        let keterangan = "Tidak ada perubahan angka kecelakaan.";
+        if (selisihLaka < 0) {
+            keterangan = `Terjadi penurunan angka kecelakaan sebesar ${Math.abs(parseFloat(persentaseLaka))}% dibanding periode sebelumnya.`;
+        } else if (selisihLaka > 0) {
+            keterangan = `Terjadi kenaikan angka kecelakaan sebesar ${parseFloat(persentaseLaka)}% dibanding periode sebelumnya.`;
+        }
+
+        return successResponse(res, 200, "Statistik komparasi berhasil diambil", {
+            periode_1: {
+                rentang: `${formatTanggal(start1)} - ${formatTanggal(end1)}`,
+                total_laka: totalLaka1,
+                total_korban: totalKorban1,
+                laka_tunggal: lakaTunggal1,
+            },
+            periode_2: {
+                rentang: `${formatTanggal(start2)} - ${formatTanggal(end2)}`,
+                total_laka: totalLaka2,
+                total_korban: totalKorban2,
+                laka_tunggal: lakaTunggal2,
+            },
+            komparasi: {
+                selisih_laka: selisihLaka,
+                persentase_laka: persentaseLaka,
+                selisih_korban: selisihKorban,
+                persentase_korban: persentaseKorban,
+                keterangan,
+            },
+        });
+    } catch (error) {
+        logger.error("Statistik komparasi error", error);
+        return errorResponse(res, 500, "Failed to retrieve statistik komparasi");
     }
 };
 
@@ -382,4 +717,5 @@ module.exports = {
     createLaporanPolisi,
     updateLaporanPolisi,
     deleteLaporanPolisi,
+    getStatistikKomparasi,
 };

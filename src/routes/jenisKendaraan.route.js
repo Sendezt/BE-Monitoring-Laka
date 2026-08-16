@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const {
     getJenisKendaraan,
@@ -9,6 +9,8 @@ const {
 } = require("../controllers/jeniskendaraan.controller");
 
 const router = express.Router();
+
+const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -79,7 +81,7 @@ const router = express.Router();
  *       500:
  *         description: Failed to retrieve jenis kendaraan
  */
-router.get("/", getJenisKendaraan);
+router.get("/", verifyToken, getJenisKendaraan);
 
 /**
  * @swagger
@@ -117,7 +119,7 @@ router.get("/", getJenisKendaraan);
  *       500:
  *         description: Failed to retrieve jenis kendaraan
  */
-router.get("/:id", getJenisKendaraanById);
+router.get("/:id", verifyToken, getJenisKendaraanById);
 
 /**
  * @swagger
@@ -155,7 +157,7 @@ router.get("/:id", getJenisKendaraanById);
  *       500:
  *         description: Failed to create jenis kendaraan
  */
-router.post("/", createJenisKendaraan);
+router.post("/", verifyToken, checkRole(["admin"]), createJenisKendaraan);
 
 /**
  * @swagger
@@ -203,7 +205,7 @@ router.post("/", createJenisKendaraan);
  *       500:
  *         description: Failed to update jenis kendaraan
  */
-router.put("/:id", updateJenisKendaraan);
+router.put("/:id", verifyToken, checkRole(["admin"]), updateJenisKendaraan);
 
 /**
  * @swagger
@@ -242,6 +244,7 @@ router.put("/:id", updateJenisKendaraan);
  *       500:
  *         description: Failed to delete jenis kendaraan
  */
-router.delete("/:id", deleteJenisKendaraan);
+router.delete("/:id", verifyToken, checkRole(["admin"]), deleteJenisKendaraan);
 
 module.exports = router;
+
