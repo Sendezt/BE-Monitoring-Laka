@@ -12,6 +12,7 @@ const FaktorPenyebabLaka = require("./FaktorPenyebabLaka");
 const SifatLaka = require("./SifatLaka");
 const Keterjaminan = require("./Keterjaminan");
 const JenisKendaraan = require("./JenisKendaraan");
+const JenisJaminan = require("./JenisJaminan");
 
 // =========================
 // Wilayah → User
@@ -98,4 +99,5 @@ module.exports = {
     Cidera,
     Keterjaminan,
     JenisKendaraan,
+    JenisJaminan,
 };
