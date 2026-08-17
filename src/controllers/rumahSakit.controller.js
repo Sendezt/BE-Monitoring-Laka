@@ -10,17 +10,21 @@ const logger = require("../utils/logger");
 // GET /api/rumah-sakit
 const getRumahSakit = async (req, res) => {
     try {
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 10, wilayah_id } = req.query;
         const pageNum = Math.max(1, parseInt(page, 10) || 1);
-        const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+        const limitNum = Math.min(500, Math.max(1, parseInt(limit, 10) || 10));
         const offset = (pageNum - 1) * limitNum;
+
+        // Build where clause — filter by wilayah_id when provided
+        const whereClause = { is_active: true };
+        if (wilayah_id) {
+            whereClause.wilayah_id = parseInt(wilayah_id, 10);
+        }
 
         const { count, rows } = await RumahSakit.findAndCountAll({
             limit: limitNum,
             offset: offset,
-            where: {
-                is_active: true,
-            },
+            where: whereClause,
             include: [
                 {
                     model: Wilayah,

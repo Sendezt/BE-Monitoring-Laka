@@ -57,6 +57,11 @@ const ActivityLog = sequelize.define(
             allowNull: true,
             comment: "FK ke users — siapa yang melakukan aksi",
         },
+
+        deskripsi: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+        },
     },
     {
         tableName: "activity_log",

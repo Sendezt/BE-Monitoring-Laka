@@ -31,8 +31,15 @@ const logger = require("../utils/logger");
 // ─────────────────────────────────────────────────────────────
 // Helper: catat activity log
 // ─────────────────────────────────────────────────────────────
-const logActivity = async (aksi, tabel, record_id, data_lama, data_baru, req, t) => {
+const logActivity = async (aksi, tabel, record_id, data_lama, data_baru, req, t, customDeskripsi) => {
     try {
+        let deskripsi = customDeskripsi;
+        if (!deskripsi) {
+            const userStr = req.user ? (req.user.nama_lengkap || req.user.username) + " (" + req.user.role + ")" : "Sistem";
+            const actionStr = aksi === "CREATE" ? "membuat" : aksi === "UPDATE" ? "memperbarui" : aksi === "DELETE" ? "menghapus" : aksi;
+            const tableStr = tabel.replace(/_/g, " ");
+            deskripsi = userStr + " " + actionStr + " data " + tableStr + " #" + record_id;
+        }
         await ActivityLog.create(
             {
                 aksi,
@@ -43,6 +50,7 @@ const logActivity = async (aksi, tabel, record_id, data_lama, data_baru, req, t)
                 ip_address: req.ip || req.headers["x-forwarded-for"] || null,
                 waktu: new Date(),
                 user_id: req.user?.id || null,
+                deskripsi,
             },
             { transaction: t }
         );
@@ -105,7 +113,7 @@ const detailInclude = [
         as: "kendaraan",
         where: { is_active: true },
         required: false,
-        attributes: ["id", "peran", "nopol", "masa_laku_sw"],
+        attributes: ["id", "peran", "nopol", "masa_laku_sw", "jenis_kendaraan_id"],
         include: [
             {
                 model: JenisKendaraan,
@@ -119,7 +127,7 @@ const detailInclude = [
         as: "korban",
         where: { is_active: true },
         required: false,
-        attributes: ["id", "nama", "usia", "kendaraan_id"],
+        attributes: ["id", "nama", "usia", "kendaraan_id", "profesi_id", "cidera_id"],
         include: [
             {
                 model: Profesi,
@@ -155,14 +163,14 @@ const getLaporanPolisi = async (req, res) => {
         if (no_lp) where.no_lp = { [Op.like]: `%${String(no_lp).trim()}%` };
         if (kecamatan_id) where.kecamatan_id = Number(kecamatan_id);
 
-        // Scope wilayah otomatis untuk pegawai
+        // Scope wilayah otomatis untuk user
         const includeKecamatan = {
             model: Kecamatan,
             as: "kecamatan",
             attributes: ["id", "nama"],
         };
 
-        if (req.user?.role === "pegawai") {
+        if (req.user?.role === "user") {
             includeKecamatan.required = true;
             includeKecamatan.include = [
                 {
@@ -224,8 +232,8 @@ const getLaporanPolisiById = async (req, res) => {
             return errorResponse(res, 404, "Laporan polisi not found");
         }
 
-        // Scope wilayah untuk pegawai
-        if (req.user?.role === "pegawai") {
+        // Scope wilayah untuk user
+        if (req.user?.role === "user") {
             const kecamatan = await Kecamatan.findByPk(laporanPolisi.kecamatan_id, {
                 include: [{ model: require("../models/Polres"), as: "polres", attributes: ["wilayah_id"] }],
             });
@@ -414,8 +422,8 @@ const updateLaporanPolisi = async (req, res) => {
             return errorResponse(res, 404, "Laporan polisi not found");
         }
 
-        // Scope wilayah untuk pegawai
-        if (req.user?.role === "pegawai") {
+        // Scope wilayah untuk user
+        if (req.user?.role === "user") {
             const kecamatan = await Kecamatan.findByPk(laporanPolisi.kecamatan_id, {
                 include: [{ model: require("../models/Polres"), as: "polres", attributes: ["wilayah_id"] }],
             });

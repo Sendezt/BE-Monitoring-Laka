@@ -93,6 +93,7 @@ const login = async (req, res) => {
             record_id: user.id,
             user_id: user.id,
             ip_address: req.ip || req.connection.remoteAddress,
+            deskripsi: `Pengguna @${user.username} (${user.nama_lengkap}) berhasil masuk ke sistem`,
         });
 
         return successResponse(

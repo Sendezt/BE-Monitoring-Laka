@@ -15,17 +15,20 @@ const logger = require("../utils/logger");
 // GET /api/kelurahan
 const getKelurahan = async (req, res) => {
     try {
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 10, kecamatan_id } = req.query;
         const pageNum = Math.max(1, parseInt(page, 10) || 1);
-        const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+        const limitNum = Math.min(500, Math.max(1, parseInt(limit, 10) || 10));
         const offset = (pageNum - 1) * limitNum;
+
+        const whereClause = { is_active: true };
+        if (kecamatan_id) {
+            whereClause.kecamatan_id = parseInt(kecamatan_id, 10);
+        }
 
         const { count, rows } = await Kelurahan.findAndCountAll({
             limit: limitNum,
             offset: offset,
-            where: {
-                is_active: true,
-            },
+            where: whereClause,
             include: [
                 {
                     model: Kecamatan,

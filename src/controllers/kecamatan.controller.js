@@ -10,10 +10,28 @@ const logger = require("../utils/logger");
 // GET /api/kecamatan
 const getKecamatan = async (req, res) => {
     try {
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 10, wilayah_id } = req.query;
         const pageNum = Math.max(1, parseInt(page, 10) || 1);
-        const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+        const limitNum = Math.min(500, Math.max(1, parseInt(limit, 10) || 10));
         const offset = (pageNum - 1) * limitNum;
+
+        // Build polres include — filter by wilayah_id when provided
+        const polresInclude = {
+            model: Polres,
+            as: "polres",
+            attributes: ["id", "nama", "wilayah_id"],
+            include: [
+                {
+                    model: Wilayah,
+                    as: "wilayah",
+                    attributes: ["id", "nama"],
+                },
+            ],
+        };
+        if (wilayah_id) {
+            polresInclude.where = { wilayah_id: parseInt(wilayah_id, 10) };
+            polresInclude.required = true;
+        }
 
         const { count, rows } = await Kecamatan.findAndCountAll({
             limit: limitNum,
@@ -21,20 +39,7 @@ const getKecamatan = async (req, res) => {
             where: {
                 is_active: true,
             },
-            include: [
-                {
-                    model: Polres,
-                    as: "polres",
-                    attributes: ["id", "nama", "wilayah_id"],
-                    include: [
-                        {
-                            model: Wilayah,
-                            as: "wilayah",
-                            attributes: ["id", "nama"],
-                        },
-                    ],
-                },
-            ],
+            include: [polresInclude],
             order: [["nama", "ASC"]],
         });
 
