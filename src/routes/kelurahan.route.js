@@ -1,8 +1,9 @@
-﻿const express = require("express");
+const express = require("express");
 
 const {
     getKelurahan,
     getKelurahanById,
+    getKelurahanByKecamatanId,
     createKelurahan,
     updateKelurahan,
     deleteKelurahan,
@@ -122,6 +123,58 @@ const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
  *         description: Failed to retrieve kelurahan
  */
 router.get("/", verifyToken, getKelurahan);
+
+/**
+ * @swagger
+ * /api/kelurahan/kecamatan/{kecamatan_id}:
+ *   get:
+ *     summary: Get kelurahan by kecamatan ID
+ *     description: Retrieve a list of all active kelurahan filtered by kecamatan ID, with pagination support.
+ *     tags: [Kelurahan]
+ *     parameters:
+ *       - in: path
+ *         name: kecamatan_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The kecamatan ID to filter kelurahan by
+ *         example: 1
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: Kelurahan retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Kelurahan retrieved successfully
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Kelurahan'
+ *       404:
+ *         description: Kecamatan not found
+ *       500:
+ *         description: Failed to retrieve kelurahan
+ */
+router.get("/kecamatan/:kecamatan_id", verifyToken, getKelurahanByKecamatanId);
 
 /**
  * @swagger

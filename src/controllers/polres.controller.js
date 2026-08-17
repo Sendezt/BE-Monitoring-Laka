@@ -301,9 +301,71 @@ const deletePolres = async (req, res) => {
     }
 };
 
+// GET /api/polres/wilayah/:wilayah_id
+const getPolresByWilayahId = async (req, res) => {
+    try {
+        const { wilayah_id } = req.params;
+
+        // Validate wilayah exists
+        const wilayah = await Wilayah.findByPk(wilayah_id);
+
+        if (!wilayah || !wilayah.is_active) {
+            return errorResponse(
+                res,
+                404,
+                "Wilayah not found"
+            );
+        }
+
+        const { page = 1, limit = 10 } = req.query;
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+        const offset = (pageNum - 1) * limitNum;
+
+        const { count, rows } = await Polres.findAndCountAll({
+            limit: limitNum,
+            offset: offset,
+            where: {
+                wilayah_id,
+                is_active: true,
+            },
+            include: [
+                {
+                    model: Wilayah,
+                    as: "wilayah",
+                    attributes: ["id", "nama"],
+                },
+            ],
+            order: [["nama", "ASC"]],
+        });
+
+        return successResponse(
+            res,
+            200,
+            "Polres retrieved successfully",
+            rows,
+            {
+                total: count,
+                page: pageNum,
+                limit: limitNum,
+                total_pages: Math.ceil(count / limitNum),
+            }
+        );
+    } catch (error) {
+        logger.error("Get polres by wilayah ID error", error);
+
+        return errorResponse(
+            res,
+            500,
+            "Failed to retrieve polres"
+        );
+    }
+};
+
 module.exports = {
     getPolres,
     getPolresById,
+    getPolresByWilayahId,
     createPolres,
     updatePolres,
     deletePolres,

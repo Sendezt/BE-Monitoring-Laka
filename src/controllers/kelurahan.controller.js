@@ -357,9 +357,85 @@ const deleteKelurahan = async (req, res) => {
     }
 };
 
+// GET /api/kelurahan/kecamatan/:kecamatan_id
+const getKelurahanByKecamatanId = async (req, res) => {
+    try {
+        const { kecamatan_id } = req.params;
+
+        // Check if Kecamatan exists and is active
+        const kecamatan = await Kecamatan.findByPk(kecamatan_id);
+
+        if (!kecamatan || !kecamatan.is_active) {
+            return errorResponse(
+                res,
+                404,
+                "Kecamatan not found"
+            );
+        }
+
+        const { page = 1, limit = 10 } = req.query;
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(500, Math.max(1, parseInt(limit, 10) || 10));
+        const offset = (pageNum - 1) * limitNum;
+
+        const { count, rows } = await Kelurahan.findAndCountAll({
+            limit: limitNum,
+            offset: offset,
+            where: {
+                kecamatan_id,
+                is_active: true,
+            },
+            include: [
+                {
+                    model: Kecamatan,
+                    as: "kecamatan",
+                    attributes: ["id", "nama", "polres_id"],
+                    include: [
+                        {
+                            model: Polres,
+                            as: "polres",
+                            attributes: ["id", "nama", "wilayah_id"],
+                            include: [
+                                {
+                                    model: Wilayah,
+                                    as: "wilayah",
+                                    attributes: ["id", "nama"],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+            order: [["nama", "ASC"]],
+        });
+
+        return successResponse(
+            res,
+            200,
+            "Kelurahan retrieved successfully",
+            rows,
+            {
+                total: count,
+                page: pageNum,
+                limit: limitNum,
+                total_pages: Math.ceil(count / limitNum),
+            }
+        );
+    } catch (error) {
+        logger.error("Get kelurahan by kecamatan ID error", error);
+
+        return errorResponse(
+            res,
+            500,
+            "Failed to retrieve kelurahan"
+        );
+    }
+};
+
 module.exports = {
     getKelurahan,
     getKelurahanById,
+    getKelurahanByKecamatanId,
     createKelurahan,
     updateKelurahan,
     deleteKelurahan,

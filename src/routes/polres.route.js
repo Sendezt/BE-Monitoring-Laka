@@ -1,8 +1,9 @@
-﻿const express = require("express");
+const express = require("express");
 
 const {
     getPolres,
     getPolresById,
+    getPolresByWilayahId,
     createPolres,
     updatePolres,
     deletePolres,
@@ -98,6 +99,58 @@ const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
  *         description: Failed to retrieve polres
  */
 router.get("/", verifyToken, getPolres);
+
+/**
+ * @swagger
+ * /api/polres/wilayah/{wilayah_id}:
+ *   get:
+ *     summary: Get polres by wilayah ID
+ *     description: Retrieve a list of all active polres filtered by wilayah ID, with pagination support.
+ *     tags: [Polres]
+ *     parameters:
+ *       - in: path
+ *         name: wilayah_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The wilayah ID to filter polres by
+ *         example: 1
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: Polres retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Polres retrieved successfully
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Polres'
+ *       404:
+ *         description: Wilayah not found
+ *       500:
+ *         description: Failed to retrieve polres
+ */
+router.get("/wilayah/:wilayah_id", verifyToken, getPolresByWilayahId);
 
 /**
  * @swagger

@@ -8,6 +8,7 @@ const {
     Korban,
     Kecamatan,
     Kelurahan,
+    Polres,
     RumahSakit,
     TindakLanjut,
     JenisJaminan,
@@ -63,6 +64,11 @@ const logActivity = async (aksi, tabel, record_id, data_lama, data_baru, req, t,
 // Helper: include untuk GET /:id (nested detail)
 // ─────────────────────────────────────────────────────────────
 const detailInclude = [
+    {
+        model: Polres,
+        as: "polres",
+        attributes: ["id", "nama"],
+    },
     {
         model: Kecamatan,
         as: "kecamatan",
@@ -149,7 +155,7 @@ const detailInclude = [
 // ─────────────────────────────────────────────────────────────
 const getLaporanPolisi = async (req, res) => {
     try {
-        const { from, to, no_lp, kecamatan_id, page = 1, limit = 10 } = req.query;
+        const { from, to, no_lp, kecamatan_id, polres_id, page = 1, limit = 10 } = req.query;
 
         const pageNum = Math.max(1, parseInt(page, 10) || 1);
         const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
@@ -162,6 +168,7 @@ const getLaporanPolisi = async (req, res) => {
         if (to) where.tanggal_laka = { ...where.tanggal_laka, [Op.lte]: to };
         if (no_lp) where.no_lp = { [Op.like]: `%${String(no_lp).trim()}%` };
         if (kecamatan_id) where.kecamatan_id = Number(kecamatan_id);
+        if (polres_id) where.polres_id = Number(polres_id);
 
         // Scope wilayah otomatis untuk user
         const includeKecamatan = {
@@ -263,6 +270,7 @@ const createLaporanPolisi = async (req, res) => {
     try {
         const {
             no_lp,
+            polres_id,
             tanggal_laka,
             hari_kejadian,
             tanggal_lp,
@@ -286,6 +294,7 @@ const createLaporanPolisi = async (req, res) => {
         // Validasi field wajib
         if (
             !no_lp ||
+            polres_id === undefined || polres_id === null ||
             !tanggal_laka ||
             !hari_kejadian ||
             !tanggal_lp ||
@@ -297,7 +306,7 @@ const createLaporanPolisi = async (req, res) => {
             return errorResponse(
                 res,
                 400,
-                "no_lp, tanggal_laka, hari_kejadian, tanggal_lp, kecamatan_id, kelurahan_id, dan lokasi_laka wajib diisi"
+                "no_lp, polres_id, tanggal_laka, hari_kejadian, tanggal_lp, kecamatan_id, kelurahan_id, dan lokasi_laka wajib diisi"
             );
         }
 
@@ -309,6 +318,7 @@ const createLaporanPolisi = async (req, res) => {
         const laporanPolisi = await LaporanPolisi.create(
             {
                 no_lp: String(no_lp).trim(),
+                polres_id: Number(polres_id),
                 tanggal_laka,
                 hari_kejadian: String(hari_kejadian).trim(),
                 tanggal_lp,
@@ -434,7 +444,7 @@ const updateLaporanPolisi = async (req, res) => {
         }
 
         const {
-            no_lp, tanggal_laka, hari_kejadian, tanggal_lp,
+            no_lp, polres_id, tanggal_laka, hari_kejadian, tanggal_lp,
             kecamatan_id, kelurahan_id, lokasi_laka,
             rumah_sakit_id, rumah_sakit_wilayah, laka_tunggal,
             tindak_lanjut_id, jenis_jaminan_id, keterjaminan_id,
@@ -453,6 +463,7 @@ const updateLaporanPolisi = async (req, res) => {
         await laporanPolisi.update(
             {
                 no_lp: no_lp ? String(no_lp).trim() : laporanPolisi.no_lp,
+                polres_id: polres_id ? Number(polres_id) : laporanPolisi.polres_id,
                 tanggal_laka: tanggal_laka ?? laporanPolisi.tanggal_laka,
                 hari_kejadian: hari_kejadian ? String(hari_kejadian).trim() : laporanPolisi.hari_kejadian,
                 tanggal_lp: tanggal_lp ?? laporanPolisi.tanggal_lp,

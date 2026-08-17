@@ -338,9 +338,78 @@ const deleteKecamatan = async (req, res) => {
     }
 };
 
+// GET /api/kecamatan/polres/:polres_id
+const getKecamatanByPolresId = async (req, res) => {
+    try {
+        const { polres_id } = req.params;
+
+        // Check if Polres exists and is active
+        const polres = await Polres.findByPk(polres_id);
+
+        if (!polres || !polres.is_active) {
+            return errorResponse(
+                res,
+                404,
+                "Polres not found"
+            );
+        }
+
+        const { page = 1, limit = 10 } = req.query;
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(500, Math.max(1, parseInt(limit, 10) || 10));
+        const offset = (pageNum - 1) * limitNum;
+
+        const { count, rows } = await Kecamatan.findAndCountAll({
+            limit: limitNum,
+            offset: offset,
+            where: {
+                polres_id,
+                is_active: true,
+            },
+            include: [
+                {
+                    model: Polres,
+                    as: "polres",
+                    attributes: ["id", "nama", "wilayah_id"],
+                    include: [
+                        {
+                            model: Wilayah,
+                            as: "wilayah",
+                            attributes: ["id", "nama"],
+                        },
+                    ],
+                },
+            ],
+            order: [["nama", "ASC"]],
+        });
+
+        return successResponse(
+            res,
+            200,
+            "Kecamatan retrieved successfully",
+            rows,
+            {
+                total: count,
+                page: pageNum,
+                limit: limitNum,
+                total_pages: Math.ceil(count / limitNum),
+            }
+        );
+    } catch (error) {
+        logger.error("Get kecamatan by polres ID error", error);
+
+        return errorResponse(
+            res,
+            500,
+            "Failed to retrieve kecamatan"
+        );
+    }
+};
+
 module.exports = {
     getKecamatan,
     getKecamatanById,
+    getKecamatanByPolresId,
     createKecamatan,
     updateKecamatan,
     deleteKecamatan,

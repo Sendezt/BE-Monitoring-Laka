@@ -1,8 +1,9 @@
-﻿const express = require("express");
+const express = require("express");
 
 const {
     getKecamatan,
     getKecamatanById,
+    getKecamatanByPolresId,
     createKecamatan,
     updateKecamatan,
     deleteKecamatan,
@@ -110,6 +111,58 @@ const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
  *         description: Failed to retrieve kecamatan
  */
 router.get("/", verifyToken, getKecamatan);
+
+/**
+ * @swagger
+ * /api/kecamatan/polres/{polres_id}:
+ *   get:
+ *     summary: Get kecamatan by polres ID
+ *     description: Retrieve a list of all active kecamatan filtered by polres ID, with pagination support.
+ *     tags: [Kecamatan]
+ *     parameters:
+ *       - in: path
+ *         name: polres_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The polres ID to filter kecamatan by
+ *         example: 1
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: Kecamatan retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Kecamatan retrieved successfully
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Kecamatan'
+ *       404:
+ *         description: Polres not found
+ *       500:
+ *         description: Failed to retrieve kecamatan
+ */
+router.get("/polres/:polres_id", verifyToken, getKecamatanByPolresId);
 
 /**
  * @swagger

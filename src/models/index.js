@@ -88,6 +88,17 @@ Kelurahan.belongsTo(Kecamatan, {
   as: "kecamatan",
 });
 
+// Polres -> Laporan Polisi
+Polres.hasMany(LaporanPolisi, {
+  foreignKey: "polres_id",
+  as: "laporanPolisi",
+});
+
+LaporanPolisi.belongsTo(Polres, {
+  foreignKey: "polres_id",
+  as: "polres",
+});
+
 // Kecamatan -> LaporanPolisi
 Kecamatan.hasMany(LaporanPolisi, {
   foreignKey: "kecamatan_id",

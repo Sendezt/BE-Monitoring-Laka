@@ -36,6 +36,20 @@ const router = express.Router();
  *         no_lp:
  *           type: string
  *           example: "LP/123/VIII/2026"
+ *         polres_id:
+ *           type: integer
+ *           description: FK ke tabel polres
+ *           example: 1
+ *         polres:
+ *           type: object
+ *           description: Relasi polres (included on GET responses)
+ *           properties:
+ *             id:
+ *               type: integer
+ *               example: 1
+ *             nama:
+ *               type: string
+ *               example: "Polres Banyumas"
  *         tanggal_laka:
  *           type: string
  *           format: date
@@ -113,6 +127,7 @@ const router = express.Router();
  *       type: object
  *       required:
  *         - no_lp
+ *         - polres_id
  *         - tanggal_laka
  *         - hari_kejadian
  *         - tanggal_lp
@@ -123,6 +138,10 @@ const router = express.Router();
  *         no_lp:
  *           type: string
  *           example: "LP/123/VIII/2026"
+ *         polres_id:
+ *           type: integer
+ *           description: ID polres yang menangani laporan polisi
+ *           example: 1
  *         tanggal_laka:
  *           type: string
  *           format: date
@@ -230,6 +249,53 @@ const router = express.Router();
  *     summary: Get all laporan polisi
  *     description: Retrieve a list of all active laporan polisi, ordered by tanggal_laka descending.
  *     tags: [Laporan Polisi]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter tanggal_laka dari (>=)
+ *         example: "2026-08-01"
+ *       - in: query
+ *         name: to
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter tanggal_laka sampai (<=)
+ *         example: "2026-08-31"
+ *       - in: query
+ *         name: no_lp
+ *         schema:
+ *           type: string
+ *         description: Filter by nomor LP (partial match)
+ *         example: "LP/123"
+ *       - in: query
+ *         name: kecamatan_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by kecamatan ID
+ *         example: 1
+ *       - in: query
+ *         name: polres_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by polres ID
+ *         example: 1
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page (max 100)
  *     responses:
  *       200:
  *         description: Laporan polisi retrieved successfully
@@ -248,6 +314,21 @@ const router = express.Router();
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/LaporanPolisi'
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       example: 50
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       example: 10
+ *                     total_pages:
+ *                       type: integer
+ *                       example: 5
  *       401:
  *         description: Unauthorized - Token diperlukan
  *       500:
