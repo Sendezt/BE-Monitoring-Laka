@@ -241,10 +241,10 @@ async function startServer() {
 
     logger.info("MySQL database connected successfully");
 
-    if (process.env.NODE_ENV !== "production") {
-      await sequelize.sync();
-      logger.info("Database tables synchronized successfully");
-    }
+    // if (process.env.NODE_ENV !== "production") {
+    //   await sequelize.sync();
+    //   logger.info("Database tables synchronized successfully");
+    // }
 
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
