@@ -202,7 +202,6 @@ const getLaporanPolisi = async (req, res) => {
             limit: limitNum,
             offset,
             distinct: true,
-            distinct: true,
         });
 
         return successResponse(
@@ -863,6 +862,117 @@ const getBreakdownTerlambat = async (req, res) => {
     }
 };
 
+// ─────────────────────────────────────────────────────────────
+// GET /api/laporan-polisi/statistik/jenis-laka
+// Query params: from, to, polres_id, kecamatan_id
+// Returns: total laka tunggal & non-tunggal
+// ─────────────────────────────────────────────────────────────
+const getStatistikJenisLaka = async (req, res) => {
+    try {
+        const { from, to, polres_id, kecamatan_id } = req.query;
+
+        // Base filter
+        const baseWhere = {
+            is_active: true,
+        };
+
+        if (from) {
+            baseWhere.tanggal_laka = {
+                ...baseWhere.tanggal_laka,
+                [Op.gte]: from,
+            };
+        }
+
+        if (to) {
+            baseWhere.tanggal_laka = {
+                ...baseWhere.tanggal_laka,
+                [Op.lte]: to,
+            };
+        }
+
+        if (polres_id) {
+            baseWhere.polres_id = Number(polres_id);
+        }
+
+        if (kecamatan_id) {
+            baseWhere.kecamatan_id = Number(kecamatan_id);
+        }
+
+        // Scope wilayah otomatis untuk user
+        const include = [];
+
+        if (req.user?.role === "user") {
+            include.push({
+                model: Polres,
+                as: "polres",
+                attributes: [],
+                where: {
+                    wilayah_id: req.user.wilayah_id,
+                },
+                required: true,
+            });
+        }
+
+        // Jalankan count secara parallel
+        const [totalLakaTunggal, totalLakaNonTunggal] = await Promise.all([
+            LaporanPolisi.count({
+                where: {
+                    ...baseWhere,
+                    laka_tunggal: true,
+                },
+                include,
+            }),
+
+            LaporanPolisi.count({
+                where: {
+                    ...baseWhere,
+                    laka_tunggal: false,
+                },
+                include,
+            }),
+        ]);
+
+        const totalLaka = totalLakaTunggal + totalLakaNonTunggal;
+
+        const persentaseTunggal =
+            totalLaka > 0
+                ? `${((totalLakaTunggal / totalLaka) * 100).toFixed(2)}%`
+                : "0.00%";
+
+        const persentaseNonTunggal =
+            totalLaka > 0
+                ? `${((totalLakaNonTunggal / totalLaka) * 100).toFixed(2)}%`
+                : "0.00%";
+
+        return successResponse(
+            res,
+            200,
+            "Statistik jenis laka retrieved successfully",
+            {
+                total_laka: totalLaka,
+
+                laka_tunggal: {
+                    total: totalLakaTunggal,
+                    persentase: persentaseTunggal,
+                },
+
+                laka_non_tunggal: {
+                    total: totalLakaNonTunggal,
+                    persentase: persentaseNonTunggal,
+                },
+            }
+        );
+    } catch (error) {
+        logger.error("Get statistik jenis laka error", error);
+
+        return errorResponse(
+            res,
+            500,
+            "Failed to retrieve statistik jenis laka"
+        );
+    }
+};
+
 module.exports = {
     getLaporanPolisi,
     getLaporanPolisiById,
@@ -872,4 +982,5 @@ module.exports = {
     getStatistikKomparasi,
     getStatusLP,
     getBreakdownTerlambat,
+    getStatistikJenisLaka
 };

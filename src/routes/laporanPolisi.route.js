@@ -9,6 +9,7 @@ const {
     getStatistikKomparasi,
     getStatusLP,
     getBreakdownTerlambat,
+    getStatistikJenisLaka,
 } = require("../controllers/laporanPolisi.controller");
 
 const {
@@ -539,6 +540,91 @@ router.get("/status-lp", verifyToken, getStatusLP);
  */
 router.get("/breakdown-terlambat", verifyToken, getBreakdownTerlambat);
 
+/**
+ * @swagger
+ * /api/laporan-polisi/statistik/jenis-laka:
+ *   get:
+ *     summary: Statistik kecelakaan tunggal dan non-tunggal
+ *     description: Mengambil jumlah dan persentase kecelakaan tunggal dan non-tunggal berdasarkan field laka_tunggal. Pegawai hanya bisa mengakses data di wilayah sendiri.
+ *     tags: [Laporan Polisi]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter tanggal_laka dari (>=)
+ *         example: "2026-08-01"
+ *       - in: query
+ *         name: to
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter tanggal_laka sampai (<=)
+ *         example: "2026-08-31"
+ *       - in: query
+ *         name: polres_id
+ *         schema:
+ *           type: integer
+ *         description: Filter berdasarkan Polres
+ *         example: 1
+ *       - in: query
+ *         name: kecamatan_id
+ *         schema:
+ *           type: integer
+ *         description: Filter berdasarkan Kecamatan
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Statistik jenis laka berhasil diambil
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Statistik jenis laka retrieved successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     total_laka:
+ *                       type: integer
+ *                       example: 30
+ *                     laka_tunggal:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                           example: 12
+ *                         persentase:
+ *                           type: string
+ *                           example: "40.00%"
+ *                     laka_non_tunggal:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                           example: 18
+ *                         persentase:
+ *                           type: string
+ *                           example: "60.00%"
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to retrieve statistik jenis laka
+ */
+router.get(
+    "/statistik/jenis-laka",
+    verifyToken,
+    getStatistikJenisLaka
+);
+
 
 
 /**
@@ -695,4 +781,4 @@ router.put("/:id", verifyToken, updateLaporanPolisi);
  */
 router.delete("/:id", verifyToken, checkRole(["admin"]), deleteLaporanPolisi);
 
-module.exports = router;
+module.exports = router;
