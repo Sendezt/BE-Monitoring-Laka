@@ -7,6 +7,8 @@ const {
     updateLaporanPolisi,
     deleteLaporanPolisi,
     getStatistikKomparasi,
+    getStatusLP,
+    getBreakdownTerlambat,
 } = require("../controllers/laporanPolisi.controller");
 
 const {
@@ -389,6 +391,155 @@ router.get("/", verifyToken, getLaporanPolisi);
  *         description: Failed to retrieve statistik komparasi
  */
 router.get("/statistik/komparasi", verifyToken, getStatistikKomparasi);
+
+/**
+ * @swagger
+ * /api/laporan-polisi/status-lp:
+ *   get:
+ *     summary: Get status LP (terlambat & normal)
+ *     description: Retrieve the total count of active laporan polisi terlambat (telat_lp > 0) and normal (telat_lp = 0), optionally filtered by date range, polres, or kecamatan. Pegawai hanya bisa akses wilayah sendiri.
+ *     tags: [Laporan Polisi]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter tanggal_laka dari (>=)
+ *         example: "2026-08-01"
+ *       - in: query
+ *         name: to
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter tanggal_laka sampai (<=)
+ *         example: "2026-08-31"
+ *       - in: query
+ *         name: polres_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by polres ID
+ *         example: 1
+ *       - in: query
+ *         name: kecamatan_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by kecamatan ID
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Status LP retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Status LP retrieved successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     total_terlambat:
+ *                       type: integer
+ *                       example: 5
+ *                     total_normal:
+ *                       type: integer
+ *                       example: 25
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to retrieve status LP
+ */
+router.get("/status-lp", verifyToken, getStatusLP);
+
+/**
+ * @swagger
+ * /api/laporan-polisi/breakdown-terlambat:
+ *   get:
+ *     summary: Get breakdown laporan polisi terlambat
+ *     description: Retrieve the breakdown of active laporan polisi with telat_lp > 0 (1-3 days, 4-7 days, and >7 days) with their counts and percentages. Pegawai hanya bisa akses wilayah sendiri.
+ *     tags: [Laporan Polisi]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter tanggal_laka dari (>=)
+ *         example: "2026-08-01"
+ *       - in: query
+ *         name: to
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter tanggal_laka sampai (<=)
+ *         example: "2026-08-31"
+ *       - in: query
+ *         name: polres_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by polres ID
+ *         example: 1
+ *       - in: query
+ *         name: kecamatan_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by kecamatan ID
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Breakdown terlambat retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Breakdown terlambat retrieved successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     total_terlambat:
+ *                       type: integer
+ *                       example: 10
+ *                     terlambat_1_3_hari:
+ *                       type: integer
+ *                       example: 5
+ *                     persentase_1_3_hari:
+ *                       type: string
+ *                       example: "50.00%"
+ *                     terlambat_4_7_hari:
+ *                       type: integer
+ *                       example: 3
+ *                     persentase_4_7_hari:
+ *                       type: string
+ *                       example: "30.00%"
+ *                     terlambat_lebih_7_hari:
+ *                       type: integer
+ *                       example: 2
+ *                     persentase_lebih_7_hari:
+ *                       type: string
+ *                       example: "20.00%"
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to retrieve breakdown terlambat
+ */
+router.get("/breakdown-terlambat", verifyToken, getBreakdownTerlambat);
+
+
 
 /**
  * @swagger

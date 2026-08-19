@@ -729,6 +729,140 @@ const getStatistikKomparasi = async (req, res) => {
     }
 };
 
+// ─────────────────────────────────────────────────────────────
+// GET /api/laporan-polisi/status-lp
+// Query params: from, to, polres_id, kecamatan_id
+// Returns: total_terlambat (telat_lp > 0) & total_normal (telat_lp = 0)
+// ─────────────────────────────────────────────────────────────
+const getStatusLP = async (req, res) => {
+    try {
+        const { from, to, polres_id, kecamatan_id } = req.query;
+
+        // Base where (shared filters)
+        const baseWhere = { is_active: true };
+
+        if (from) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.gte]: from };
+        if (to) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.lte]: to };
+        if (kecamatan_id) baseWhere.kecamatan_id = Number(kecamatan_id);
+        if (polres_id) baseWhere.polres_id = Number(polres_id);
+
+        const include = [];
+
+        // Scope wilayah otomatis untuk user
+        if (req.user?.role === "user") {
+            include.push({
+                model: Polres,
+                as: "polres",
+                attributes: [],
+                where: { wilayah_id: req.user.wilayah_id },
+                required: true,
+            });
+        }
+
+        // Jalankan kedua query secara parallel
+        const [totalTerlambat, totalNormal] = await Promise.all([
+            LaporanPolisi.count({
+                where: { ...baseWhere, telat_lp: { [Op.gt]: 0 } },
+                include,
+            }),
+            LaporanPolisi.count({
+                where: { ...baseWhere, telat_lp: 0 },
+                include,
+            }),
+        ]);
+
+        const total = totalTerlambat + totalNormal;
+        const persentaseTerlambat = total > 0
+            ? `${((totalTerlambat / total) * 100).toFixed(2)}%`
+            : "0.00%";
+        const persentaseNormal = total > 0
+            ? `${((totalNormal / total) * 100).toFixed(2)}%`
+            : "0.00%";
+
+        return successResponse(res, 200, "Status LP retrieved successfully", {
+            total,
+            total_terlambat: totalTerlambat,
+            persentase_terlambat: persentaseTerlambat,
+            total_normal: totalNormal,
+            persentase_normal: persentaseNormal,
+        });
+    } catch (error) {
+        logger.error("Get status LP error", error);
+        return errorResponse(res, 500, "Failed to retrieve status LP");
+    }
+};
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/laporan-polisi/breakdown-terlambat
+// Query params: from, to, polres_id, kecamatan_id
+// Returns: breakdown 1-3 hari, 4-7 hari, >7 hari + persentase
+// ─────────────────────────────────────────────────────────────
+const getBreakdownTerlambat = async (req, res) => {
+    try {
+        const { from, to, polres_id, kecamatan_id } = req.query;
+
+        // Base where (shared filters — hanya yg terlambat)
+        const baseWhere = {
+            is_active: true,
+            telat_lp: { [Op.gt]: 0 },
+        };
+
+        if (from) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.gte]: from };
+        if (to) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.lte]: to };
+        if (kecamatan_id) baseWhere.kecamatan_id = Number(kecamatan_id);
+        if (polres_id) baseWhere.polres_id = Number(polres_id);
+
+        const include = [];
+
+        // Scope wilayah otomatis untuk user
+        if (req.user?.role === "user") {
+            include.push({
+                model: Polres,
+                as: "polres",
+                attributes: [],
+                where: { wilayah_id: req.user.wilayah_id },
+                required: true,
+            });
+        }
+
+        // Jalankan 3 query secara parallel
+        const [terlambat1_3, terlambat4_7, terlambatLebih7] = await Promise.all([
+            LaporanPolisi.count({
+                where: { ...baseWhere, telat_lp: { [Op.between]: [1, 3] } },
+                include,
+            }),
+            LaporanPolisi.count({
+                where: { ...baseWhere, telat_lp: { [Op.between]: [4, 7] } },
+                include,
+            }),
+            LaporanPolisi.count({
+                where: { ...baseWhere, telat_lp: { [Op.gt]: 7 } },
+                include,
+            }),
+        ]);
+
+        const totalTerlambat = terlambat1_3 + terlambat4_7 + terlambatLebih7;
+
+        const persen = (val) =>
+            totalTerlambat > 0
+                ? `${((val / totalTerlambat) * 100).toFixed(2)}%`
+                : "0.00%";
+
+        return successResponse(res, 200, "Breakdown terlambat retrieved successfully", {
+            total_terlambat: totalTerlambat,
+            terlambat_1_3_hari: terlambat1_3,
+            persentase_1_3_hari: persen(terlambat1_3),
+            terlambat_4_7_hari: terlambat4_7,
+            persentase_4_7_hari: persen(terlambat4_7),
+            terlambat_lebih_7_hari: terlambatLebih7,
+            persentase_lebih_7_hari: persen(terlambatLebih7),
+        });
+    } catch (error) {
+        logger.error("Get breakdown terlambat error", error);
+        return errorResponse(res, 500, "Failed to retrieve breakdown terlambat");
+    }
+};
+
 module.exports = {
     getLaporanPolisi,
     getLaporanPolisiById,
@@ -736,4 +870,6 @@ module.exports = {
     updateLaporanPolisi,
     deleteLaporanPolisi,
     getStatistikKomparasi,
+    getStatusLP,
+    getBreakdownTerlambat,
 };
