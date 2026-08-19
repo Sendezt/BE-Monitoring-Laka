@@ -219,6 +219,10 @@ const router = express.Router();
  *               nopol:
  *                 type: string
  *                 example: "R 1234 AB"
+ *               masa_laku_sw:
+ *                 type: string
+ *                 format: date
+ *                 example: "2026-08-15"
  *         korban:
  *           type: array
  *           items:

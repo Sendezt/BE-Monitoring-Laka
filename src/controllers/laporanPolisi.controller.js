@@ -352,7 +352,7 @@ const createLaporanPolisi = async (req, res) => {
                     peran: k.peran,
                     jenis_kendaraan_id: k.jenis_kendaraan_id ? Number(k.jenis_kendaraan_id) : null,
                     nopol: k.nopol ? String(k.nopol).trim() : null,
-                    masa_laku_sw: k.masa_laku_sw ?? null,
+                    masa_laku_sw: k.masa_laku_sw || null,
                     is_active: true,
                 },
                 { transaction: t }
