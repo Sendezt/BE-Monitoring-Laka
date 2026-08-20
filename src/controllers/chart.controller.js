@@ -1036,6 +1036,66 @@ const getStatistikHariKejadian = async (req, res) => {
     }
 };
 
+// ─────────────────────────────────────────────────────────────
+// GET /api/laporan-polisi/statistik/top-10-polres-lp-terlama
+// Query params: from, to, polres_id
+// Returns: 10 Polres dengan rata-rata telat_lp terlama
+// ─────────────────────────────────────────────────────────────
+const getTop10PolresPenerbitanLPTerlama = async (req, res) => {
+    try {
+        const { from, to, polres_id } = req.query;
+
+        // Base filter untuk LaporanPolisi
+        const whereLaporan = { is_active: true };
+
+        if (from) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.gte]: from };
+        if (to) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.lte]: to };
+        if (polres_id && polres_id !== "ALL") {
+            whereLaporan.polres_id = Number(polres_id);
+        }
+
+        // Include Polres untuk mendaptkan nama polres
+        const includePolres = {
+            model: Polres,
+            as: "polres",
+            attributes: ["id", "nama"],
+            required: true,
+            include: [],
+        };
+
+        // Filter wilayah otomatis untuk user
+        if (req.user?.role === "user") {
+            includePolres.where = { wilayah_id: req.user.wilayah_id };
+        }
+
+        // Query agregasi: hitung rata-rata telat_lp per polres
+        const result = await LaporanPolisi.findAll({
+            attributes: [
+                "polres_id",
+                [sequelize.fn("AVG", sequelize.col("LaporanPolisi.telat_lp")), "rata_rata_telat"],
+            ],
+            where: whereLaporan,
+            include: [includePolres],
+            group: ["LaporanPolisi.polres_id", "polres.id", "polres.nama"],
+            order: [[sequelize.literal("rata_rata_telat"), "DESC"]],
+            limit: 10,
+            raw: true,
+        });
+
+        // Format hasil agar mudah dibaca dan pembulatan 2 desimal
+        const data = result.map((row) => ({
+            polres_id: row.polres_id,
+            nama_polres: row["polres.nama"] || row.nama,
+            rata_rata_telat: parseFloat(row.rata_rata_telat || 0).toFixed(2),
+        }));
+
+        return successResponse(res, 200, "Top 10 Polres LP terlama retrieved successfully", data);
+    } catch (error) {
+        logger.error("Get top 10 Polres LP terlama error", error);
+        return errorResponse(res, 500, "Failed to retrieve top 10 Polres LP terlama");
+    }
+};
+
 module.exports = {
     getPerbandinganStatistik,
     getTotalLakaPerWilayah,
@@ -1046,5 +1106,6 @@ module.exports = {
     getTop20KecamatanLaka,
     getTop15RumahSakitKorban,
     getTrendHarianLPKorban,
-    getStatistikHariKejadian
+    getStatistikHariKejadian,
+    getTop10PolresPenerbitanLPTerlama
 };

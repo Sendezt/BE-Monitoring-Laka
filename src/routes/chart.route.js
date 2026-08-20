@@ -10,7 +10,8 @@ const {
     getTop20KecamatanLaka,
     getTop15RumahSakitKorban,
     getTrendHarianLPKorban,
-    getStatistikHariKejadian
+    getStatistikHariKejadian,
+    getTop10PolresPenerbitanLPTerlama
 } = require("../controllers/chart.controller");
 
 const {
@@ -837,5 +838,70 @@ router.get("/statistik/trend-harian", verifyToken, getTrendHarianLPKorban);
  *         description: Failed to retrieve statistik hari kejadian laka
  */
 router.get("/statistik/hari-kejadian", verifyToken, getStatistikHariKejadian);
+
+/**
+ * @swagger
+ * /api/chart/statistik/top-10-polres-lp-terlama:
+ *   get:
+ *     summary: 10 Polres dengan penerbitan LP terlama
+ *     description: Mendapatkan daftar 10 Polres yang memiliki rata-rata waktu penerbitan Laporan Polisi terlama (berdasarkan kolom telat_lp). Mendukung filter rentang tanggal. Pegawai hanya melihat wilayah sendiri.
+ *     tags: [Chart]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter tanggal_laka dari (>=)
+ *         example: "2026-08-01"
+ *       - in: query
+ *         name: to
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter tanggal_laka sampai (<=)
+ *         example: "2026-08-31"
+ *       - in: query
+ *         name: polres_id
+ *         schema:
+ *           type: string
+ *         description: ID Polres atau "ALL"
+ *         example: "ALL"
+ *     responses:
+ *       200:
+ *         description: Top 10 Polres LP terlama retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Top 10 Polres LP terlama retrieved successfully
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       polres_id:
+ *                         type: integer
+ *                         example: 5
+ *                       nama_polres:
+ *                         type: string
+ *                         example: "POLRESTA BANYUMAS"
+ *                       rata_rata_telat:
+ *                         type: string
+ *                         example: "63.43"
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to retrieve top 10 Polres LP terlama
+ */
+router.get("/statistik/top-10-polres-lp-terlama", verifyToken, getTop10PolresPenerbitanLPTerlama);
 
 module.exports = router;
