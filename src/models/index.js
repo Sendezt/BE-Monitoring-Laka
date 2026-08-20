@@ -132,37 +132,37 @@ LaporanPolisi.belongsTo(RumahSakit, {
   as: "rumahSakit",
 });
 
-// Tidak Lanjut -> LaporanPolisi
-TindakLanjut.hasMany(LaporanPolisi, {
+// Tindak Lanjut -> Korban
+TindakLanjut.hasMany(Korban, {
   foreignKey: "tindak_lanjut_id",
-  as: "laporanPolisi",
+  as: "korban",
 });
 
-LaporanPolisi.belongsTo(TindakLanjut, {
+Korban.belongsTo(TindakLanjut, {
   foreignKey: "tindak_lanjut_id",
   as: "tindakLanjut",
 });
 
-// Jenis Jaminan -> LaporanPolisi
-JenisJaminan.hasMany(LaporanPolisi, {
+// Jenis Jaminan -> Korban
+JenisJaminan.hasMany(Korban, {
   foreignKey: "jenis_jaminan_id",
-  as: "laporanPolisi",
+  as: "korban",
 });
 
-LaporanPolisi.belongsTo(JenisJaminan, {
+Korban.belongsTo(JenisJaminan, {
   foreignKey: "jenis_jaminan_id",
   as: "jenisJaminan",
 });
 
-// Keterjaminan -> LaporanPolisi
-Keterjaminan.hasMany(LaporanPolisi, {
+// Keterjaminan -> Korban
+Keterjaminan.hasMany(Korban, {
   foreignKey: "keterjaminan_id",
-  as: "laporanPolisi",
+  as: "korban",
 });
 
-LaporanPolisi.belongsTo(Keterjaminan, {
+Korban.belongsTo(Keterjaminan, {
   foreignKey: "keterjaminan_id",
-  as: "keterjaminan", // FIX: alias yang benar
+  as: "keterjaminan",
 });
 
 // Sifat Laka -> LaporanPolisi

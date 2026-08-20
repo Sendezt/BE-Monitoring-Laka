@@ -73,20 +73,7 @@ const LaporanPolisi = sequelize.define(
       defaultValue: false,
     },
 
-    tindak_lanjut_id: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
 
-    jenis_jaminan_id: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-
-    keterjaminan_id: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
 
     kasus_tabrak_kecelakaan_id: {
       type: DataTypes.INTEGER,

@@ -40,6 +40,21 @@ const Korban = sequelize.define(
             allowNull: true,
         },
 
+        tindak_lanjut_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+        },
+
+        jenis_jaminan_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+        },
+
+        keterjaminan_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+        },
+
         is_active: {
             type: DataTypes.BOOLEAN,
             allowNull: false,

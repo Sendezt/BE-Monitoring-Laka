@@ -89,18 +89,7 @@ const router = express.Router();
  *         laka_tunggal:
  *           type: boolean
  *           example: false
- *         tindak_lanjut_id:
- *           type: integer
- *           nullable: true
- *           example: 1
- *         jenis_jaminan_id:
- *           type: integer
- *           nullable: true
- *           example: 2
- *         keterjaminan_id:
- *           type: integer
- *           nullable: true
- *           example: 1
+
  *         kasus_tabrak_kecelakaan_id:
  *           type: integer
  *           nullable: true
@@ -181,18 +170,7 @@ const router = express.Router();
  *         laka_tunggal:
  *           type: boolean
  *           example: false
- *         tindak_lanjut_id:
- *           type: integer
- *           nullable: true
- *           example: 1
- *         jenis_jaminan_id:
- *           type: integer
- *           nullable: true
- *           example: 2
- *         keterjaminan_id:
- *           type: integer
- *           nullable: true
- *           example: 1
+
  *         kasus_tabrak_kecelakaan_id:
  *           type: integer
  *           nullable: true
@@ -249,6 +227,15 @@ const router = express.Router();
  *                 type: integer
  *                 description: Index kendaraan di array kendaraan (0, 1, 2, dst)
  *                 example: 0
+ *               tindak_lanjut_id:
+ *                 type: integer
+ *                 example: 1
+ *               jenis_jaminan_id:
+ *                 type: integer
+ *                 example: 2
+ *               keterjaminan_id:
+ *                 type: integer
+ *                 example: 1
  */
 
 /**

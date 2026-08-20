@@ -84,21 +84,7 @@ const detailInclude = [
         as: "rumahSakit",
         attributes: ["id", "nama"],
     },
-    {
-        model: TindakLanjut,
-        as: "tindakLanjut",
-        attributes: ["id", "nama"],
-    },
-    {
-        model: JenisJaminan,
-        as: "jenisJaminan",
-        attributes: ["id", "nama"],
-    },
-    {
-        model: Keterjaminan,
-        as: "keterjaminan",
-        attributes: ["id", "nama"],
-    },
+
     {
         model: SifatLaka,
         as: "sifatLaka",
@@ -133,7 +119,7 @@ const detailInclude = [
         as: "korban",
         where: { is_active: true },
         required: false,
-        attributes: ["id", "nama", "usia", "kendaraan_id", "profesi_id", "cidera_id"],
+        attributes: ["id", "nama", "usia", "kendaraan_id", "profesi_id", "cidera_id", "tindak_lanjut_id", "jenis_jaminan_id", "keterjaminan_id"],
         include: [
             {
                 model: Profesi,
@@ -143,6 +129,21 @@ const detailInclude = [
             {
                 model: Cidera,
                 as: "cidera",
+                attributes: ["id", "nama"],
+            },
+            {
+                model: TindakLanjut,
+                as: "tindakLanjut",
+                attributes: ["id", "nama"],
+            },
+            {
+                model: JenisJaminan,
+                as: "jenisJaminan",
+                attributes: ["id", "nama"],
+            },
+            {
+                model: Keterjaminan,
+                as: "keterjaminan",
                 attributes: ["id", "nama"],
             },
         ],
@@ -279,9 +280,6 @@ const createLaporanPolisi = async (req, res) => {
             rumah_sakit_id,
             rumah_sakit_wilayah,
             laka_tunggal,
-            tindak_lanjut_id,
-            jenis_jaminan_id,
-            keterjaminan_id,
             kasus_tabrak_kecelakaan_id,
             faktor_penyebab_laka_id,
             sifat_laka_id,
@@ -328,9 +326,6 @@ const createLaporanPolisi = async (req, res) => {
                 rumah_sakit_id: rumah_sakit_id ? Number(rumah_sakit_id) : null,
                 rumah_sakit_wilayah: rumah_sakit_wilayah ?? null,
                 laka_tunggal: laka_tunggal ?? false,
-                tindak_lanjut_id: tindak_lanjut_id ? Number(tindak_lanjut_id) : null,
-                jenis_jaminan_id: jenis_jaminan_id ? Number(jenis_jaminan_id) : null,
-                keterjaminan_id: keterjaminan_id ? Number(keterjaminan_id) : null,
                 kasus_tabrak_kecelakaan_id: kasus_tabrak_kecelakaan_id ? Number(kasus_tabrak_kecelakaan_id) : null,
                 faktor_penyebab_laka_id: faktor_penyebab_laka_id ? Number(faktor_penyebab_laka_id) : null,
                 sifat_laka_id: sifat_laka_id ? Number(sifat_laka_id) : null,
@@ -375,6 +370,9 @@ const createLaporanPolisi = async (req, res) => {
                     profesi_id: krb.profesi_id ? Number(krb.profesi_id) : null,
                     cidera_id: krb.cidera_id ? Number(krb.cidera_id) : null,
                     kendaraan_id: resolvedKendaraanId,
+                    tindak_lanjut_id: krb.tindak_lanjut_id ? Number(krb.tindak_lanjut_id) : null,
+                    jenis_jaminan_id: krb.jenis_jaminan_id ? Number(krb.jenis_jaminan_id) : null,
+                    keterjaminan_id: krb.keterjaminan_id ? Number(krb.keterjaminan_id) : null,
                     is_active: true,
                 },
                 { transaction: t }
@@ -446,9 +444,10 @@ const updateLaporanPolisi = async (req, res) => {
             no_lp, polres_id, tanggal_laka, hari_kejadian, tanggal_lp,
             kecamatan_id, kelurahan_id, lokasi_laka,
             rumah_sakit_id, rumah_sakit_wilayah, laka_tunggal,
-            tindak_lanjut_id, jenis_jaminan_id, keterjaminan_id,
             kasus_tabrak_kecelakaan_id, faktor_penyebab_laka_id,
             sifat_laka_id, keterangan,
+            kendaraan: kendaraanPayload,
+            korban: korbanPayload,
         } = req.body;
 
         const dataLama = laporanPolisi.toJSON();
@@ -473,9 +472,6 @@ const updateLaporanPolisi = async (req, res) => {
                 rumah_sakit_id: rumah_sakit_id !== undefined ? (rumah_sakit_id ? Number(rumah_sakit_id) : null) : laporanPolisi.rumah_sakit_id,
                 rumah_sakit_wilayah: rumah_sakit_wilayah !== undefined ? rumah_sakit_wilayah : laporanPolisi.rumah_sakit_wilayah,
                 laka_tunggal: laka_tunggal ?? laporanPolisi.laka_tunggal,
-                tindak_lanjut_id: tindak_lanjut_id !== undefined ? (tindak_lanjut_id ? Number(tindak_lanjut_id) : null) : laporanPolisi.tindak_lanjut_id,
-                jenis_jaminan_id: jenis_jaminan_id !== undefined ? (jenis_jaminan_id ? Number(jenis_jaminan_id) : null) : laporanPolisi.jenis_jaminan_id,
-                keterjaminan_id: keterjaminan_id !== undefined ? (keterjaminan_id ? Number(keterjaminan_id) : null) : laporanPolisi.keterjaminan_id,
                 kasus_tabrak_kecelakaan_id: kasus_tabrak_kecelakaan_id !== undefined ? (kasus_tabrak_kecelakaan_id ? Number(kasus_tabrak_kecelakaan_id) : null) : laporanPolisi.kasus_tabrak_kecelakaan_id,
                 faktor_penyebab_laka_id: faktor_penyebab_laka_id !== undefined ? (faktor_penyebab_laka_id ? Number(faktor_penyebab_laka_id) : null) : laporanPolisi.faktor_penyebab_laka_id,
                 sifat_laka_id: sifat_laka_id !== undefined ? (sifat_laka_id ? Number(sifat_laka_id) : null) : laporanPolisi.sifat_laka_id,
@@ -483,6 +479,70 @@ const updateLaporanPolisi = async (req, res) => {
             },
             { transaction: t }
         );
+
+        // ── Upsert Kendaraan ──────────────────────────────────
+        const kendaraanIndexMap = {}; // { index → kendaraan_id }
+
+        if (Array.isArray(kendaraanPayload)) {
+            // Soft-delete semua kendaraan lama, lalu buat ulang
+            await Kendaraan.update(
+                { is_active: false },
+                { where: { laporan_polisi_id: laporanPolisi.id }, transaction: t }
+            );
+            for (let i = 0; i < kendaraanPayload.length; i++) {
+                const k = kendaraanPayload[i];
+                const savedK = await Kendaraan.create(
+                    {
+                        laporan_polisi_id: laporanPolisi.id,
+                        peran: k.peran,
+                        jenis_kendaraan_id: k.jenis_kendaraan_id ? Number(k.jenis_kendaraan_id) : null,
+                        nopol: k.nopol ? String(k.nopol).trim() : null,
+                        masa_laku_sw: k.masa_laku_sw || null,
+                        is_active: true,
+                    },
+                    { transaction: t }
+                );
+                kendaraanIndexMap[i] = savedK.id;
+            }
+        } else {
+            // Bangun map dari kendaraan yang sudah ada (urutan insert awal)
+            const existingKendaraan = await Kendaraan.findAll({
+                where: { laporan_polisi_id: laporanPolisi.id, is_active: true },
+                order: [["id", "ASC"]],
+                transaction: t,
+            });
+            existingKendaraan.forEach((k, i) => { kendaraanIndexMap[i] = k.id; });
+        }
+
+        // ── Upsert Korban ─────────────────────────────────────
+        if (Array.isArray(korbanPayload)) {
+            // Soft-delete semua korban lama, lalu buat ulang
+            await Korban.update(
+                { is_active: false },
+                { where: { laporan_polisi_id: laporanPolisi.id }, transaction: t }
+            );
+            for (const krb of korbanPayload) {
+                const resolvedKendaraanId =
+                    krb.kendaraan_index !== undefined && krb.kendaraan_index !== null
+                        ? kendaraanIndexMap[krb.kendaraan_index] ?? null
+                        : null;
+                await Korban.create(
+                    {
+                        laporan_polisi_id: laporanPolisi.id,
+                        nama: String(krb.nama).trim(),
+                        usia: krb.usia ? Number(krb.usia) : null,
+                        profesi_id: krb.profesi_id ? Number(krb.profesi_id) : null,
+                        cidera_id: krb.cidera_id ? Number(krb.cidera_id) : null,
+                        kendaraan_id: resolvedKendaraanId,
+                        tindak_lanjut_id: krb.tindak_lanjut_id ? Number(krb.tindak_lanjut_id) : null,
+                        jenis_jaminan_id: krb.jenis_jaminan_id ? Number(krb.jenis_jaminan_id) : null,
+                        keterjaminan_id: krb.keterjaminan_id ? Number(krb.keterjaminan_id) : null,
+                        is_active: true,
+                    },
+                    { transaction: t }
+                );
+            }
+        }
 
         await logActivity(
             "UPDATE",
@@ -1091,24 +1151,23 @@ const getStatistikKorban = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // GET /api/laporan-polisi/statistik/keterjaminan
 // Query params: from, to, polres_id, kecamatan_id
-// Returns: total laporan & distribusi keterjaminan beserta persentase
+// Returns: total korban & distribusi keterjaminan beserta persentase
 // ─────────────────────────────────────────────────────────────
 const getStatistikKeterjaminan = async (req, res) => {
     try {
         const { from, to, polres_id, kecamatan_id } = req.query;
 
-        // Base filter untuk LaporanPolisi
-        const baseWhere = { is_active: true };
+        // Filter untuk LaporanPolisi (sebagai parent)
+        const whereLaporan = { is_active: true };
+        if (from) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.gte]: from };
+        if (to) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.lte]: to };
+        if (polres_id) whereLaporan.polres_id = Number(polres_id);
+        if (kecamatan_id) whereLaporan.kecamatan_id = Number(kecamatan_id);
 
-        if (from) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.gte]: from };
-        if (to) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.lte]: to };
-        if (polres_id) baseWhere.polres_id = Number(polres_id);
-        if (kecamatan_id) baseWhere.kecamatan_id = Number(kecamatan_id);
-
-        // Include Polres untuk scope wilayah user
-        const includePolres = [];
+        // Scope wilayah untuk user — filter via LaporanPolisi -> Polres
+        const includePolresInLP = [];
         if (req.user?.role === "user") {
-            includePolres.push({
+            includePolresInLP.push({
                 model: Polres,
                 as: "polres",
                 attributes: [],
@@ -1117,24 +1176,34 @@ const getStatistikKeterjaminan = async (req, res) => {
             });
         }
 
-        // Fungsi helper untuk menghitung laporan dengan keterjaminan_id tertentu
-        const countLaporanByKeterjaminan = async (keterjaminanId) => {
-            const where = { ...baseWhere };
+        // Include LaporanPolisi dengan filter tanggal/polres/wilayah
+        const includeLaporan = {
+            model: LaporanPolisi,
+            as: "laporanPolisi",
+            where: whereLaporan,
+            attributes: [],
+            required: true,
+            include: includePolresInLP,
+        };
+
+        // Fungsi helper: hitung korban dengan keterjaminan_id tertentu
+        const countKorbanByKeterjaminan = async (keterjaminanId) => {
+            const whereKorban = { is_active: true };
             if (keterjaminanId !== null && keterjaminanId !== undefined) {
-                where.keterjaminan_id = keterjaminanId;
+                whereKorban.keterjaminan_id = keterjaminanId;
             } else {
-                where.keterjaminan_id = { [Op.is]: null };
+                whereKorban.keterjaminan_id = { [Op.is]: null };
             }
-            return LaporanPolisi.count({
-                where,
-                include: includePolres,
+            return Korban.count({
+                where: whereKorban,
+                include: [includeLaporan],
             });
         };
 
-        // 1. Total seluruh laporan yang memenuhi filter (denominator)
-        const totalLaporan = await LaporanPolisi.count({
-            where: baseWhere,
-            include: includePolres,
+        // 1. Total seluruh korban yang memenuhi filter (denominator)
+        const totalKorban = await Korban.count({
+            where: { is_active: true },
+            include: [includeLaporan],
         });
 
         // 2. Ambil semua keterjaminan aktif
@@ -1145,13 +1214,13 @@ const getStatistikKeterjaminan = async (req, res) => {
             raw: true,
         });
 
-        // 3. Hitung jumlah laporan untuk masing-masing keterjaminan secara paralel
+        // 3. Hitung jumlah korban untuk masing-masing keterjaminan secara paralel
         const counts = await Promise.all(
-            keterjaminanList.map((k) => countLaporanByKeterjaminan(k.id))
+            keterjaminanList.map((k) => countKorbanByKeterjaminan(k.id))
         );
 
-        // 4. Hitung laporan tanpa keterjaminan (null)
-        const totalTanpaKeterjaminan = await countLaporanByKeterjaminan(null);
+        // 4. Hitung korban tanpa keterjaminan (null)
+        const totalTanpaKeterjaminan = await countKorbanByKeterjaminan(null);
 
         // 5. Susun data respons
         const rincianKeterjaminan = keterjaminanList.map((k, index) => {
@@ -1160,16 +1229,16 @@ const getStatistikKeterjaminan = async (req, res) => {
                 id: k.id,
                 nama: k.nama,
                 total,
-                persentase: totalLaporan > 0 ? `${((total / totalLaporan) * 100).toFixed(2)}%` : "0.00%",
+                persentase: totalKorban > 0 ? `${((total / totalKorban) * 100).toFixed(2)}%` : "0.00%",
             };
         });
 
         const data = {
-            total_laporan: totalLaporan,
+            total_korban: totalKorban,
             rincian_keterjaminan: rincianKeterjaminan,
             tanpa_keterjaminan: {
                 total: totalTanpaKeterjaminan,
-                persentase: totalLaporan > 0 ? `${((totalTanpaKeterjaminan / totalLaporan) * 100).toFixed(2)}%` : "0.00%",
+                persentase: totalKorban > 0 ? `${((totalTanpaKeterjaminan / totalKorban) * 100).toFixed(2)}%` : "0.00%",
             },
         };
 
