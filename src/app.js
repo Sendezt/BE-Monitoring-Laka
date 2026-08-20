@@ -32,6 +32,7 @@ const laporanPolisiRoutes = require("./routes/laporanPolisi.route");
 const kendaraanRoutes = require("./routes/kendaraan.route");
 const korbanRoutes = require("./routes/korban.route");
 const activityLogRoutes = require("./routes/activityLog.route");
+const chartRoutes = require("./routes/chart.route");
 
 
 const app = express();
@@ -231,6 +232,7 @@ app.use("/api/laporan-polisi", laporanPolisiRoutes);
 app.use("/api/kendaraan", kendaraanRoutes);
 app.use("/api/korban", korbanRoutes);
 app.use("/api/activity-log", activityLogRoutes);
+app.use("/api/chart", chartRoutes);
 
 const PORT = process.env.PORT || 3001;
 
