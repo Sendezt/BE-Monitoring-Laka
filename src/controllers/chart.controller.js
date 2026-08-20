@@ -967,8 +967,73 @@ const getTrendHarianLPKorban = async (req, res) => {
     }
 };
 
-module.exports = {
-    getTrendHarianLPKorban,
+// ─────────────────────────────────────────────────────────────
+// GET /api/laporan-polisi/statistik/hari-kejadian
+// Query params: from, to, polres_id, kecamatan_id
+// Returns: total laporan berdasarkan hari kejadian
+// ─────────────────────────────────────────────────────────────
+const getStatistikHariKejadian = async (req, res) => {
+    try {
+        const { from, to, polres_id, kecamatan_id } = req.query;
+
+        // Base filter untuk LaporanPolisi
+        const whereLaporan = { is_active: true };
+
+        if (from) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.gte]: from };
+        if (to) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.lte]: to };
+        if (polres_id && polres_id !== "ALL") {
+            whereLaporan.polres_id = Number(polres_id);
+        }
+        if (kecamatan_id) whereLaporan.kecamatan_id = Number(kecamatan_id);
+
+        const includeLaporan = [];
+        if (req.user?.role === "user") {
+            includeLaporan.push({
+                model: Polres,
+                as: "polres",
+                attributes: [],
+                where: { wilayah_id: req.user.wilayah_id },
+                required: true,
+            });
+        }
+
+        const result = await LaporanPolisi.findAll({
+            attributes: [
+                "hari_kejadian",
+                [sequelize.fn("COUNT", sequelize.col("LaporanPolisi.id")), "total_laka"],
+            ],
+            where: whereLaporan,
+            include: includeLaporan,
+            group: ["hari_kejadian"],
+            raw: true,
+        });
+
+        // Initialize with default 0 to ensure all days are present in specific order
+        const defaultDays = ["SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU"];
+        const hariMap = {};
+        defaultDays.forEach((hari) => {
+            hariMap[hari] = 0;
+        });
+
+        result.forEach((row) => {
+            if (row.hari_kejadian) {
+                const hari = row.hari_kejadian.toUpperCase();
+                if (hariMap[hari] !== undefined) {
+                    hariMap[hari] = parseInt(row.total_laka, 10) || 0;
+                }
+            }
+        });
+
+        const data = defaultDays.map((hari) => ({
+            hari: hari,
+            total_laka: hariMap[hari],
+        }));
+
+        return successResponse(res, 200, "Statistik hari kejadian laka retrieved successfully", data);
+    } catch (error) {
+        logger.error("Get statistik hari kejadian laka error", error);
+        return errorResponse(res, 500, "Failed to retrieve statistik hari kejadian laka");
+    }
 };
 
 module.exports = {
@@ -980,5 +1045,6 @@ module.exports = {
     getStatistikKorbanByJenisKendaraan,
     getTop20KecamatanLaka,
     getTop15RumahSakitKorban,
-    getTrendHarianLPKorban
+    getTrendHarianLPKorban,
+    getStatistikHariKejadian
 };

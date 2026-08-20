@@ -9,7 +9,8 @@ const {
     getStatistikKorbanByJenisKendaraan,
     getTop20KecamatanLaka,
     getTop15RumahSakitKorban,
-    getTrendHarianLPKorban
+    getTrendHarianLPKorban,
+    getStatistikHariKejadian
 } = require("../controllers/chart.controller");
 
 const {
@@ -768,5 +769,73 @@ router.get(
  *         description: Failed to retrieve trend harian LP korban
  */
 router.get("/statistik/trend-harian", verifyToken, getTrendHarianLPKorban);
+
+/**
+ * @swagger
+ * /api/chart/statistik/hari-kejadian:
+ *   get:
+ *     summary: Statistik laka berdasarkan hari kejadian
+ *     description: Mendapatkan jumlah total laporan polisi berdasarkan hari kejadian. Mendukung filter rentang tanggal, Polres, dan Kecamatan. Pegawai hanya melihat wilayah sendiri.
+ *     tags: [Chart]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter tanggal_laka dari (>=)
+ *         example: "2026-08-01"
+ *       - in: query
+ *         name: to
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter tanggal_laka sampai (<=)
+ *         example: "2026-08-31"
+ *       - in: query
+ *         name: polres_id
+ *         schema:
+ *           type: integer
+ *         description: Filter berdasarkan Polres
+ *         example: 1
+ *       - in: query
+ *         name: kecamatan_id
+ *         schema:
+ *           type: integer
+ *         description: Filter berdasarkan Kecamatan
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Statistik hari kejadian laka retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Statistik hari kejadian laka retrieved successfully
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       hari:
+ *                         type: string
+ *                         example: "SENIN"
+ *                       total_laka:
+ *                         type: integer
+ *                         example: 6
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to retrieve statistik hari kejadian laka
+ */
+router.get("/statistik/hari-kejadian", verifyToken, getStatistikHariKejadian);
 
 module.exports = router;
