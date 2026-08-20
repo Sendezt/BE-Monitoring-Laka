@@ -8,7 +8,8 @@ const {
     getStatistikKorbanByProfesi,
     getStatistikKorbanByJenisKendaraan,
     getTop20KecamatanLaka,
-    getTop15RumahSakitKorban
+    getTop15RumahSakitKorban,
+    getTrendHarianLPKorban
 } = require("../controllers/chart.controller");
 
 const {
@@ -670,5 +671,102 @@ router.get(
     verifyToken,
     getTop15RumahSakitKorban
 );
+
+/**
+ * @swagger
+ * /api/chart/statistik/trend-harian:
+ *   get:
+ *     summary: Trend harian LP dan Korban
+ *     description: Mendapatkan data trend harian Laporan Polisi (LP) dan Korban untuk periode utama dan periode pembanding (mundur 1 bulan). Setiap tanggal pada periode utama dipasangkan dengan tanggal yang sama pada periode pembanding.
+ *     tags: [Chart]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: tanggal_awal
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Tanggal awal periode utama (format YYYY-MM-DD)
+ *         example: "2026-08-01"
+ *       - in: query
+ *         name: tanggal_akhir
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Tanggal akhir periode utama (format YYYY-MM-DD)
+ *         example: "2026-08-11"
+ *       - in: query
+ *         name: polres_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID Polres atau "ALL" untuk seluruh Polres
+ *         example: "1"
+ *     responses:
+ *       200:
+ *         description: Data trend LP dan korban berhasil diambil
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Data trend LP dan korban berhasil diambil
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     periode_utama:
+ *                       type: object
+ *                       properties:
+ *                         tanggal_awal:
+ *                           type: string
+ *                           example: "2026-08-01"
+ *                         tanggal_akhir:
+ *                           type: string
+ *                           example: "2026-08-11"
+ *                     periode_pembanding:
+ *                       type: object
+ *                       properties:
+ *                         tanggal_awal:
+ *                           type: string
+ *                           example: "2026-07-01"
+ *                         tanggal_akhir:
+ *                           type: string
+ *                           example: "2026-07-11"
+ *                     trend:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           tanggal:
+ *                             type: string
+ *                             example: "01"
+ *                           lp_periode_utama:
+ *                             type: integer
+ *                             example: 106
+ *                           korban_periode_utama:
+ *                             type: integer
+ *                             example: 131
+ *                           lp_periode_pembanding:
+ *                             type: integer
+ *                             example: 144
+ *                           korban_periode_pembanding:
+ *                             type: integer
+ *                             example: 192
+ *       400:
+ *         description: Parameter tidak lengkap atau tanggal tidak valid
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to retrieve trend harian LP korban
+ */
+router.get("/statistik/trend-harian", verifyToken, getTrendHarianLPKorban);
 
 module.exports = router;

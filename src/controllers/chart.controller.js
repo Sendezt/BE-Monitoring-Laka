@@ -768,6 +768,209 @@ const getTop15RumahSakitKorban = async (req, res) => {
     }
 };
 
+
+// ─────────────────────────────────────────────────────────────
+// Helper: generate array tanggal dari start s/d end (YYYY-MM-DD)
+// ─────────────────────────────────────────────────────────────
+const generateDateRange = (start, end) => {
+    const dates = [];
+    const current = new Date(start);
+    const last = new Date(end);
+
+    while (current <= last) {
+        dates.push(current.toISOString().split("T")[0]);
+        current.setUTCDate(current.getUTCDate() + 1);
+    }
+    return dates;
+};
+
+
+// ─────────────────────────────────────────────────────────────
+// Helper: ambil peta total LP per tanggal (YYYY-MM-DD → total)
+// ─────────────────────────────────────────────────────────────
+const fetchLaporanPerDay = async (start, end, polresId, userWilayahId) => {
+    const where = {
+        is_active: true,
+        tanggal_laka: { [Op.between]: [start, end] },
+    };
+
+    if (polresId && polresId !== "ALL") {
+        where.polres_id = Number(polresId);
+    }
+
+    const include = [];
+    if (userWilayahId) {
+        include.push({
+            model: Polres,
+            as: "polres",
+            attributes: [],
+            where: { wilayah_id: userWilayahId },
+            required: true,
+        });
+    }
+
+    const rows = await LaporanPolisi.findAll({
+        attributes: [
+            "tanggal_laka",
+            [sequelize.fn("COUNT", sequelize.col("LaporanPolisi.id")), "total_lp"],
+        ],
+        where,
+        include,
+        group: ["tanggal_laka"],
+        raw: true,
+    });
+
+    const map = {};
+    rows.forEach((row) => {
+        map[row.tanggal_laka] = parseInt(row.total_lp, 10) || 0;
+    });
+    return map;
+};
+
+// ─────────────────────────────────────────────────────────────
+// Helper: ambil peta total korban per tanggal
+// ─────────────────────────────────────────────────────────────
+const fetchKorbanPerDay = async (start, end, polresId, userWilayahId) => {
+    const whereLaporan = {
+        is_active: true,
+        tanggal_laka: { [Op.between]: [start, end] },
+    };
+
+    if (polresId && polresId !== "ALL") {
+        whereLaporan.polres_id = Number(polresId);
+    }
+
+    const includeLaporan = {
+        model: LaporanPolisi,
+        as: "laporanPolisi",
+        required: true,
+        attributes: [],
+        where: whereLaporan,
+    };
+
+    if (userWilayahId) {
+        includeLaporan.include = [
+            {
+                model: Polres,
+                as: "polres",
+                attributes: [],
+                where: { wilayah_id: userWilayahId },
+                required: true,
+            },
+        ];
+    }
+
+    const rows = await Korban.findAll({
+        attributes: [
+            [sequelize.col("laporanPolisi.tanggal_laka"), "tanggal_laka"],
+            [sequelize.fn("COUNT", sequelize.col("Korban.id")), "total_korban"],
+        ],
+        where: { is_active: true },
+        include: [includeLaporan],
+        group: ["laporanPolisi.tanggal_laka"],
+        raw: true,
+    });
+
+    const map = {};
+    rows.forEach((row) => {
+        map[row.tanggal_laka] = parseInt(row.total_korban, 10) || 0;
+    });
+    return map;
+};
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/laporan-polisi/statistik/trend-harian
+// ─────────────────────────────────────────────────────────────
+const getTrendHarianLPKorban = async (req, res) => {
+    try {
+        const { tanggal_awal, tanggal_akhir, polres_id } = req.query;
+
+        // 1. Validasi
+        if (!tanggal_awal || !tanggal_akhir) {
+            return errorResponse(
+                res,
+                400,
+                "Parameter tanggal_awal dan tanggal_akhir wajib diisi"
+            );
+        }
+
+        if (new Date(tanggal_awal) > new Date(tanggal_akhir)) {
+            return errorResponse(
+                res,
+                400,
+                "tanggal_awal tidak boleh lebih besar dari tanggal_akhir"
+            );
+        }
+
+        // 2. Tentukan periode
+        const mainStart = tanggal_awal;
+        const mainEnd = tanggal_akhir;
+        const cmpStart = shiftOneMonthBack(mainStart);
+        const cmpEnd = shiftOneMonthBack(mainEnd);
+
+        // 3. Scope wilayah untuk role user
+        const userWilayahId =
+            req.user?.role === "user" ? req.user.wilayah_id : null;
+
+        // 4. Daftar tanggal utama (periode utama)
+        const mainDates = generateDateRange(mainStart, mainEnd);
+
+        // 5. Daftar tanggal pembanding (pasangan per hari)
+        const cmpDates = mainDates.map((d) => shiftOneMonthBack(d));
+
+        // 6. Ambil peta data untuk periode utama
+        const [lpMainMap, korbanMainMap] = await Promise.all([
+            fetchLaporanPerDay(mainStart, mainEnd, polres_id, userWilayahId),
+            fetchKorbanPerDay(mainStart, mainEnd, polres_id, userWilayahId),
+        ]);
+
+        // 7. Ambil peta data untuk periode pembanding
+        const [lpCmpMap, korbanCmpMap] = await Promise.all([
+            fetchLaporanPerDay(cmpStart, cmpEnd, polres_id, userWilayahId),
+            fetchKorbanPerDay(cmpStart, cmpEnd, polres_id, userWilayahId),
+        ]);
+
+        // 8. Bentuk data trend per hari
+        const trend = mainDates.map((date, index) => {
+            const cmpDate = cmpDates[index];
+            return {
+                tanggal: date.slice(8, 10), // ambil "DD"
+                lp_periode_utama: lpMainMap[date] || 0,
+                korban_periode_utama: korbanMainMap[date] || 0,
+                lp_periode_pembanding: lpCmpMap[cmpDate] || 0,
+                korban_periode_pembanding: korbanCmpMap[cmpDate] || 0,
+            };
+        });
+
+        // 9. Susun response
+        const data = {
+            periode_utama: {
+                tanggal_awal: mainStart,
+                tanggal_akhir: mainEnd,
+            },
+            periode_pembanding: {
+                tanggal_awal: cmpStart,
+                tanggal_akhir: cmpEnd,
+            },
+            trend,
+        };
+
+        return successResponse(
+            res,
+            200,
+            "Data trend LP dan korban berhasil diambil",
+            data
+        );
+    } catch (error) {
+        logger.error("Get trend harian LP korban error", error);
+        return errorResponse(res, 500, "Failed to retrieve trend harian LP korban");
+    }
+};
+
+module.exports = {
+    getTrendHarianLPKorban,
+};
+
 module.exports = {
     getPerbandinganStatistik,
     getTotalLakaPerWilayah,
@@ -776,5 +979,6 @@ module.exports = {
     getStatistikKorbanByProfesi,
     getStatistikKorbanByJenisKendaraan,
     getTop20KecamatanLaka,
-    getTop15RumahSakitKorban
+    getTop15RumahSakitKorban,
+    getTrendHarianLPKorban
 };
