@@ -10,6 +10,8 @@ const {
     getStatusLP,
     getBreakdownTerlambat,
     getStatistikJenisLaka,
+    getStatistikKorban,
+    getStatistikKeterjaminan
 } = require("../controllers/laporanPolisi.controller");
 
 const {
@@ -625,7 +627,184 @@ router.get(
     getStatistikJenisLaka
 );
 
+/**
+ * @swagger
+ * /api/laporan-polisi/statistik/korban:
+ *   get:
+ *     summary: Statistik korban berdasarkan cidera
+ *     description: Mendapatkan total korban dan breakdown berdasarkan kategori cidera (LL, LL-MD, MD) beserta persentasenya. Pegawai hanya bisa mengakses data di wilayah sendiri.
+ *     tags: [Laporan Polisi]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter tanggal_laka dari (>=)
+ *         example: "2026-08-01"
+ *       - in: query
+ *         name: to
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter tanggal_laka sampai (<=)
+ *         example: "2026-08-31"
+ *       - in: query
+ *         name: polres_id
+ *         schema:
+ *           type: integer
+ *         description: Filter berdasarkan Polres
+ *         example: 1
+ *       - in: query
+ *         name: kecamatan_id
+ *         schema:
+ *           type: integer
+ *         description: Filter berdasarkan Kecamatan
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Statistik korban berhasil diambil
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Statistik korban retrieved successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     total_korban:
+ *                       type: integer
+ *                       example: 50
+ *                     cidera_LL:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                           example: 20
+ *                         persentase:
+ *                           type: string
+ *                           example: "40.00%"
+ *                     cidera_LL_MD:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                           example: 15
+ *                         persentase:
+ *                           type: string
+ *                           example: "30.00%"
+ *                     cidera_MD:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                           example: 5
+ *                         persentase:
+ *                           type: string
+ *                           example: "10.00%"
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to retrieve statistik korban
+ */
+router.get("/statistik/korban", verifyToken, getStatistikKorban);
 
+/**
+ * @swagger
+ * /api/laporan-polisi/statistik/keterjaminan:
+ *   get:
+ *     summary: Statistik keterjaminan laporan polisi
+ *     description: Mendapatkan distribusi jumlah laporan polisi berdasarkan jenis keterjaminan beserta persentasenya. Pegawai hanya bisa mengakses data di wilayah sendiri.
+ *     tags: [Laporan Polisi]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter tanggal_laka dari (>=)
+ *         example: "2026-08-01"
+ *       - in: query
+ *         name: to
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter tanggal_laka sampai (<=)
+ *         example: "2026-08-31"
+ *       - in: query
+ *         name: polres_id
+ *         schema:
+ *           type: integer
+ *         description: Filter berdasarkan Polres
+ *         example: 1
+ *       - in: query
+ *         name: kecamatan_id
+ *         schema:
+ *           type: integer
+ *         description: Filter berdasarkan Kecamatan
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Statistik keterjaminan berhasil diambil
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Statistik keterjaminan retrieved successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     total_laporan:
+ *                       type: integer
+ *                       example: 100
+ *                     rincian_keterjaminan:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                             example: 1
+ *                           nama:
+ *                             type: string
+ *                             example: "Jaminan Sendiri"
+ *                           total:
+ *                             type: integer
+ *                             example: 30
+ *                           persentase:
+ *                             type: string
+ *                             example: "30.00%"
+ *                     tanpa_keterjaminan:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                           example: 20
+ *                         persentase:
+ *                           type: string
+ *                           example: "20.00%"
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to retrieve statistik keterjaminan
+ */
+router.get("/statistik/keterjaminan", verifyToken, getStatistikKeterjaminan);
 
 /**
  * @swagger

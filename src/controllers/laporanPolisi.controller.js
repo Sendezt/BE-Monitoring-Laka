@@ -973,6 +973,213 @@ const getStatistikJenisLaka = async (req, res) => {
     }
 };
 
+// ─────────────────────────────────────────────────────────────
+// GET /api/laporan-polisi/statistik/korban
+// Query params: from, to, polres_id, kecamatan_id
+// Returns: total korban & breakdown cidera LL, LL-MD, MD
+// ─────────────────────────────────────────────────────────────
+const getStatistikKorban = async (req, res) => {
+    try {
+        const { from, to, polres_id, kecamatan_id } = req.query;
+
+        // Base filter untuk LaporanPolisi
+        const baseWhere = { is_active: true };
+
+        if (from) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.gte]: from };
+        if (to) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.lte]: to };
+        if (polres_id) baseWhere.polres_id = Number(polres_id);
+        if (kecamatan_id) baseWhere.kecamatan_id = Number(kecamatan_id);
+
+        // Scope wilayah untuk user (include ke Polres melalui LaporanPolisi)
+        const includePolres = [];
+        if (req.user?.role === "user") {
+            includePolres.push({
+                model: Polres,
+                as: "polres",
+                attributes: [],
+                where: { wilayah_id: req.user.wilayah_id },
+                required: true,
+            });
+        }
+
+        // Helper: hitung korban dengan filter laporan + filter cidera_id
+        const countKorbanWithCidera = async (cideraIds) => {
+            if (!cideraIds || cideraIds.length === 0) return 0;
+            return Korban.count({
+                where: {
+                    is_active: true,
+                    cidera_id: { [Op.in]: cideraIds },
+                },
+                include: [
+                    {
+                        model: LaporanPolisi,
+                        as: "laporanPolisi",
+                        where: baseWhere,
+                        required: true,
+                        attributes: [],
+                        include: includePolres, // nested include untuk filter wilayah
+                    },
+                ],
+            });
+        };
+
+        // Ambil id cidera berdasarkan nama (asumsi nama persis)
+        const namaCidera = ["LL", "LL-MD", "MD"];
+        const cideraRecords = await Cidera.findAll({
+            where: { nama: { [Op.in]: namaCidera } },
+            attributes: ["id", "nama"],
+            raw: true,
+        });
+
+        // Kelompokkan id per kategori
+        const idByNama = {};
+        for (const nama of namaCidera) {
+            idByNama[nama] = cideraRecords
+                .filter(c => c.nama === nama)
+                .map(c => c.id);
+        }
+
+        // Hitung total korban keseluruhan (tanpa filter cidera)
+        const totalKorban = await countKorbanWithCidera(null); // null berarti tanpa filter cidera_id
+        // Sebenarnya fungsi di atas memerlukan array, kita buat fungsi terpisah untuk total
+        const totalKorbanCount = await Korban.count({
+            where: { is_active: true },
+            include: [
+                {
+                    model: LaporanPolisi,
+                    as: "laporanPolisi",
+                    where: baseWhere,
+                    required: true,
+                    attributes: [],
+                    include: includePolres,
+                },
+            ],
+        });
+
+        // Hitung masing-masing kategori
+        const totalLL = await countKorbanWithCidera(idByNama["LL"] || []);
+        const totalLLMD = await countKorbanWithCidera(idByNama["LL-MD"] || []);
+        const totalMD = await countKorbanWithCidera(idByNama["MD"] || []);
+
+        // Hitung persentase
+        const persen = (val) =>
+            totalKorbanCount > 0
+                ? `${((val / totalKorbanCount) * 100).toFixed(2)}%`
+                : "0.00%";
+
+        return successResponse(res, 200, "Statistik korban retrieved successfully", {
+            total_korban: totalKorbanCount,
+            cidera_LL: {
+                total: totalLL,
+                persentase: persen(totalLL),
+            },
+            cidera_LL_MD: {
+                total: totalLLMD,
+                persentase: persen(totalLLMD),
+            },
+            cidera_MD: {
+                total: totalMD,
+                persentase: persen(totalMD),
+            },
+        });
+    } catch (error) {
+        logger.error("Get statistik korban error", error);
+        return errorResponse(res, 500, "Failed to retrieve statistik korban");
+    }
+};
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/laporan-polisi/statistik/keterjaminan
+// Query params: from, to, polres_id, kecamatan_id
+// Returns: total laporan & distribusi keterjaminan beserta persentase
+// ─────────────────────────────────────────────────────────────
+const getStatistikKeterjaminan = async (req, res) => {
+    try {
+        const { from, to, polres_id, kecamatan_id } = req.query;
+
+        // Base filter untuk LaporanPolisi
+        const baseWhere = { is_active: true };
+
+        if (from) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.gte]: from };
+        if (to) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.lte]: to };
+        if (polres_id) baseWhere.polres_id = Number(polres_id);
+        if (kecamatan_id) baseWhere.kecamatan_id = Number(kecamatan_id);
+
+        // Include Polres untuk scope wilayah user
+        const includePolres = [];
+        if (req.user?.role === "user") {
+            includePolres.push({
+                model: Polres,
+                as: "polres",
+                attributes: [],
+                where: { wilayah_id: req.user.wilayah_id },
+                required: true,
+            });
+        }
+
+        // Fungsi helper untuk menghitung laporan dengan keterjaminan_id tertentu
+        const countLaporanByKeterjaminan = async (keterjaminanId) => {
+            const where = { ...baseWhere };
+            if (keterjaminanId !== null && keterjaminanId !== undefined) {
+                where.keterjaminan_id = keterjaminanId;
+            } else {
+                where.keterjaminan_id = { [Op.is]: null };
+            }
+            return LaporanPolisi.count({
+                where,
+                include: includePolres,
+            });
+        };
+
+        // 1. Total seluruh laporan yang memenuhi filter (denominator)
+        const totalLaporan = await LaporanPolisi.count({
+            where: baseWhere,
+            include: includePolres,
+        });
+
+        // 2. Ambil semua keterjaminan aktif
+        const keterjaminanList = await Keterjaminan.findAll({
+            where: { is_active: true },
+            attributes: ["id", "nama"],
+            order: [["id", "ASC"]],
+            raw: true,
+        });
+
+        // 3. Hitung jumlah laporan untuk masing-masing keterjaminan secara paralel
+        const counts = await Promise.all(
+            keterjaminanList.map((k) => countLaporanByKeterjaminan(k.id))
+        );
+
+        // 4. Hitung laporan tanpa keterjaminan (null)
+        const totalTanpaKeterjaminan = await countLaporanByKeterjaminan(null);
+
+        // 5. Susun data respons
+        const rincianKeterjaminan = keterjaminanList.map((k, index) => {
+            const total = counts[index];
+            return {
+                id: k.id,
+                nama: k.nama,
+                total,
+                persentase: totalLaporan > 0 ? `${((total / totalLaporan) * 100).toFixed(2)}%` : "0.00%",
+            };
+        });
+
+        const data = {
+            total_laporan: totalLaporan,
+            rincian_keterjaminan: rincianKeterjaminan,
+            tanpa_keterjaminan: {
+                total: totalTanpaKeterjaminan,
+                persentase: totalLaporan > 0 ? `${((totalTanpaKeterjaminan / totalLaporan) * 100).toFixed(2)}%` : "0.00%",
+            },
+        };
+
+        return successResponse(res, 200, "Statistik keterjaminan retrieved successfully", data);
+    } catch (error) {
+        logger.error("Get statistik keterjaminan error", error);
+        return errorResponse(res, 500, "Failed to retrieve statistik keterjaminan");
+    }
+};
+
 module.exports = {
     getLaporanPolisi,
     getLaporanPolisiById,
@@ -982,5 +1189,7 @@ module.exports = {
     getStatistikKomparasi,
     getStatusLP,
     getBreakdownTerlambat,
-    getStatistikJenisLaka
+    getStatistikJenisLaka,
+    getStatistikKorban,
+    getStatistikKeterjaminan,
 };
