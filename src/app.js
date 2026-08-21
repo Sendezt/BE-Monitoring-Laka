@@ -23,7 +23,7 @@ const profesiRoutes = require("./routes/profesi.route");
 const tindakLanjutRoutes = require("./routes/tindaklanjut.route");
 const cideraRoutes = require("./routes/cidera.route");
 const keterjaminanRoutes = require("./routes/keterjaminan.route");
-const sifatLakaRoutes = require("./routes/sifatLaka.route");
+const sifatLakaRoutes = require("./routes/sifatlaka.route");
 const jenisKendaraanRoutes = require("./routes/jenisKendaraan.route");
 const kasusTabrakKecelakaanRoutes = require("./routes/kasustabrakkecelakaan.route");
 const faktorPenyebabLakaRoutes = require("./routes/faktorpenyebablaka.route");
@@ -121,7 +121,7 @@ app.get("/", (req, res) => {
       framework: "Express",
       database: "MySQL",
       platform: process.platform,
-      port: Number(process.env.PORT || 3001),
+      port: Number(process.env.PORT),
       environment: process.env.NODE_ENV || "development",
       uptime: formatUptime(process.uptime()),
       cpu: {
@@ -234,7 +234,7 @@ app.use("/api/korban", korbanRoutes);
 app.use("/api/activity-log", activityLogRoutes);
 app.use("/api/chart", chartRoutes);
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT;
 
 // Start server + database connection
 async function startServer() {
