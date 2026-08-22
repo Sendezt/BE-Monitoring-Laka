@@ -21,7 +21,7 @@ const getKeterjaminan = async (req, res) => {
             where: {
                 is_active: true,
             },
-            order: [["nama", "ASC"]],
+            order: [["id", "ASC"]],
         });
 
         return successResponse(

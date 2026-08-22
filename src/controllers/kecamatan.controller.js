@@ -40,7 +40,7 @@ const getKecamatan = async (req, res) => {
                 is_active: true,
             },
             include: [polresInclude],
-            order: [["nama", "ASC"]],
+            order: [["id", "ASC"]],
         });
 
         return successResponse(
@@ -380,7 +380,7 @@ const getKecamatanByPolresId = async (req, res) => {
                     ],
                 },
             ],
-            order: [["nama", "ASC"]],
+            order: [["id", "ASC"]],
         });
 
         return successResponse(

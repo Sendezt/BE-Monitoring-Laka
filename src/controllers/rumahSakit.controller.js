@@ -32,7 +32,7 @@ const getRumahSakit = async (req, res) => {
                     attributes: ["id", "nama"],
                 },
             ],
-            order: [["nama", "ASC"]],
+            order: [["id", "ASC"]],
         });
 
         return successResponse(

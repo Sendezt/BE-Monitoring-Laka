@@ -50,7 +50,7 @@ const getKelurahan = async (req, res) => {
                     ],
                 },
             ],
-            order: [["nama", "ASC"]],
+            order: [["id", "ASC"]],
         });
 
         return successResponse(
@@ -406,7 +406,7 @@ const getKelurahanByKecamatanId = async (req, res) => {
                     ],
                 },
             ],
-            order: [["nama", "ASC"]],
+            order: [["id", "ASC"]],
         });
 
         return successResponse(

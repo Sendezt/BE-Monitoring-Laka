@@ -28,7 +28,7 @@ const getPolres = async (req, res) => {
                     attributes: ["id", "nama"],
                 },
             ],
-            order: [["nama", "ASC"]],
+            order: [["id", "ASC"]],
         });
 
         return successResponse(
@@ -336,7 +336,7 @@ const getPolresByWilayahId = async (req, res) => {
                     attributes: ["id", "nama"],
                 },
             ],
-            order: [["nama", "ASC"]],
+            order: [["id", "ASC"]],
         });
 
         return successResponse(
