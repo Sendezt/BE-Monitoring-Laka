@@ -22,7 +22,7 @@ const Korban = sequelize.define(
 
         usia: {
             type: DataTypes.INTEGER,
-            allowNull: false,
+            allowNull: true,
         },
 
         profesi_id: {

@@ -166,8 +166,8 @@ const getLaporanPolisi = async (req, res) => {
         // Base filter
         const where = { is_active: true };
 
-        if (from) where.tanggal_laka = { ...where.tanggal_laka, [Op.gte]: from };
-        if (to) where.tanggal_laka = { ...where.tanggal_laka, [Op.lte]: to };
+        if (from) where.tanggal_lp = { ...where.tanggal_lp, [Op.gte]: from };
+        if (to) where.tanggal_lp = { ...where.tanggal_lp, [Op.lte]: to };
         if (no_lp) where.no_lp = { [Op.like]: `%${String(no_lp).trim()}%` };
         if (kecamatan_id) where.kecamatan_id = Number(kecamatan_id);
         if (polres_id) where.polres_id = Number(polres_id);
@@ -801,8 +801,8 @@ const getStatusLP = async (req, res) => {
         // Base where (shared filters)
         const baseWhere = { is_active: true };
 
-        if (from) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.gte]: from };
-        if (to) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.lte]: to };
+        if (from) baseWhere.tanggal_lp = { ...baseWhere.tanggal_lp, [Op.gte]: from };
+        if (to) baseWhere.tanggal_lp = { ...baseWhere.tanggal_lp, [Op.lte]: to };
         if (kecamatan_id) baseWhere.kecamatan_id = Number(kecamatan_id);
         if (polres_id) baseWhere.polres_id = Number(polres_id);
 
@@ -867,8 +867,8 @@ const getBreakdownTerlambat = async (req, res) => {
             telat_lp: { [Op.gt]: 0 },
         };
 
-        if (from) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.gte]: from };
-        if (to) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.lte]: to };
+        if (from) baseWhere.tanggal_lp = { ...baseWhere.tanggal_lp, [Op.gte]: from };
+        if (to) baseWhere.tanggal_lp = { ...baseWhere.tanggal_lp, [Op.lte]: to };
         if (kecamatan_id) baseWhere.kecamatan_id = Number(kecamatan_id);
         if (polres_id) baseWhere.polres_id = Number(polres_id);
 
@@ -938,15 +938,15 @@ const getStatistikJenisLaka = async (req, res) => {
         };
 
         if (from) {
-            baseWhere.tanggal_laka = {
-                ...baseWhere.tanggal_laka,
+            baseWhere.tanggal_lp = {
+                ...baseWhere.tanggal_lp,
                 [Op.gte]: from,
             };
         }
 
         if (to) {
-            baseWhere.tanggal_laka = {
-                ...baseWhere.tanggal_laka,
+            baseWhere.tanggal_lp = {
+                ...baseWhere.tanggal_lp,
                 [Op.lte]: to,
             };
         }
@@ -1046,8 +1046,8 @@ const getStatistikKorban = async (req, res) => {
         // Base filter untuk LaporanPolisi
         const baseWhere = { is_active: true };
 
-        if (from) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.gte]: from };
-        if (to) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.lte]: to };
+        if (from) baseWhere.tanggal_lp = { ...baseWhere.tanggal_lp, [Op.gte]: from };
+        if (to) baseWhere.tanggal_lp = { ...baseWhere.tanggal_lp, [Op.lte]: to };
         if (polres_id) baseWhere.polres_id = Number(polres_id);
         if (kecamatan_id) baseWhere.kecamatan_id = Number(kecamatan_id);
 
@@ -1160,8 +1160,8 @@ const getStatistikKeterjaminan = async (req, res) => {
 
         // Filter untuk LaporanPolisi (sebagai parent)
         const whereLaporan = { is_active: true };
-        if (from) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.gte]: from };
-        if (to) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.lte]: to };
+        if (from) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.gte]: from };
+        if (to) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.lte]: to };
         if (polres_id) whereLaporan.polres_id = Number(polres_id);
         if (kecamatan_id) whereLaporan.kecamatan_id = Number(kecamatan_id);
 
@@ -1346,8 +1346,8 @@ const getRekapitulasiPolres = async (req, res) => {
   try {
     const { from, to, polres_id } = req.query;
     const baseWhere = { is_active: true };
-    if (from) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.gte]: from };
-    if (to) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.lte]: to };
+    if (from) baseWhere.tanggal_lp = { ...baseWhere.tanggal_lp, [Op.gte]: from };
+    if (to) baseWhere.tanggal_lp = { ...baseWhere.tanggal_lp, [Op.lte]: to };
     if (polres_id && polres_id !== 'ALL') baseWhere.polres_id = Number(polres_id);
 
     let polresScope = { is_active: true };
@@ -1411,8 +1411,8 @@ const getRekapitulasiLoket = async (req, res) => {
   try {
     const { from, to, polres_id } = req.query;
     const baseWhere = { is_active: true };
-    if (from) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.gte]: from };
-    if (to) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.lte]: to };
+    if (from) baseWhere.tanggal_lp = { ...baseWhere.tanggal_lp, [Op.gte]: from };
+    if (to) baseWhere.tanggal_lp = { ...baseWhere.tanggal_lp, [Op.lte]: to };
     if (polres_id && polres_id !== 'ALL') baseWhere.polres_id = Number(polres_id);
 
     let wilayahScope = { is_active: true };

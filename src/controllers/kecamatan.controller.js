@@ -12,7 +12,7 @@ const getKecamatan = async (req, res) => {
     try {
         const { page = 1, limit = 10, wilayah_id } = req.query;
         const pageNum = Math.max(1, parseInt(page, 10) || 1);
-        const limitNum = Math.min(500, Math.max(1, parseInt(limit, 10) || 10));
+        const limitNum = Math.min(10000, Math.max(1, parseInt(limit, 10) || 10));
         const offset = (pageNum - 1) * limitNum;
 
         // Build polres include — filter by wilayah_id when provided
@@ -356,7 +356,7 @@ const getKecamatanByPolresId = async (req, res) => {
 
         const { page = 1, limit = 10 } = req.query;
         const pageNum = Math.max(1, parseInt(page, 10) || 1);
-        const limitNum = Math.min(500, Math.max(1, parseInt(limit, 10) || 10));
+        const limitNum = Math.min(10000, Math.max(1, parseInt(limit, 10) || 10));
         const offset = (pageNum - 1) * limitNum;
 
         const { count, rows } = await Kecamatan.findAndCountAll({

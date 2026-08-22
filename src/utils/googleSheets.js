@@ -67,6 +67,18 @@ const KENDARAAN_KEYWORD_MAP = {
 // ============================================
 // FORMAT TANGGAL → YYYY-MM-DD (DATEONLY)
 // ============================================
+
+// Validasi komponen tanggal masuk akal (tahun 2000-2100, bulan 1-12, hari 1-31).
+// Mencegah nilai kacau seperti "12026-11-12" lolos ke DB.
+function isSaneYmd(y, m, d) {
+    const yn = parseInt(y, 10), mn = parseInt(m, 10), dn = parseInt(d, 10);
+    if (isNaN(yn) || isNaN(mn) || isNaN(dn)) return false;
+    if (yn < 2000 || yn > 2100) return false;
+    if (mn < 1 || mn > 12) return false;
+    if (dn < 1 || dn > 31) return false;
+    return true;
+}
+
 function formatDate(dateStr) {
     if (!dateStr) return null;
 
@@ -79,7 +91,7 @@ function formatDate(dateStr) {
         const month = match[2].padStart(2, "0");
         let year = match[3];
         if (year.length === 2) year = "20" + year;
-        return `${year}-${month}-${day}`;
+        return isSaneYmd(year, month, day) ? `${year}-${month}-${day}` : null;
     }
 
     const monthMap = {
@@ -96,19 +108,20 @@ function formatDate(dateStr) {
         const month = monthMap[monthName];
         let year = match[3];
         if (year.length === 2) year = "20" + year;
-        if (month) return `${year}-${month}-${day}`;
+        if (month && isSaneYmd(year, month, day)) return `${year}-${month}-${day}`;
+        return null;
     }
 
     // yyyy-mm-dd
     match = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (match) return str;
+    if (match) return isSaneYmd(match[1], match[2], match[3]) ? str : null;
 
     const date = new Date(str);
     if (!isNaN(date.getTime())) {
         const m = String(date.getMonth() + 1).padStart(2, "0");
         const d = String(date.getDate()).padStart(2, "0");
         const y = date.getFullYear();
-        return `${y}-${m}-${d}`;
+        return isSaneYmd(y, m, d) ? `${y}-${m}-${d}` : null;
     }
 
     return null;
@@ -125,19 +138,58 @@ function formatMasaLakuSW(dateStr) {
 // ============================================
 // FUZZY MATCHING
 // ============================================
-function stringSimilarity(str1, str2) {
-    const s1 = str1.toLowerCase().trim();
-    const s2 = str2.toLowerCase().trim();
 
-    if (s1 === s2) return 1;
-    if (s1.includes(s2) || s2.includes(s1)) return 0.9;
+// Normalisasi teks untuk perbandingan: lowercase, hapus spasi & tanda baca,
+// samakan agar "SAWAH BESAR", "Sawahbesar", "Sawah-Besar" dianggap sama.
+function normalizeForMatch(str) {
+    return (str || "")
+        .toString()
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, ""); // buang spasi, titik, koma, strip, dll
+}
 
-    let matches = 0;
-    const len = Math.min(s1.length, s2.length);
-    for (let i = 0; i < len; i++) {
-        if (s1[i] === s2[i]) matches++;
+// Jarak Levenshtein (jumlah edit minimum antar 2 string)
+function levenshtein(a, b) {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+
+    const prev = new Array(b.length + 1);
+    for (let j = 0; j <= b.length; j++) prev[j] = j;
+
+    for (let i = 1; i <= a.length; i++) {
+        let prevDiag = prev[0];
+        prev[0] = i;
+        for (let j = 1; j <= b.length; j++) {
+            const temp = prev[j];
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            prev[j] = Math.min(
+                prev[j] + 1,      // hapus
+                prev[j - 1] + 1,  // sisip
+                prevDiag + cost   // ganti
+            );
+            prevDiag = temp;
+        }
     }
-    return matches / Math.max(s1.length, s2.length);
+    return prev[b.length];
+}
+
+function stringSimilarity(str1, str2) {
+    const s1 = normalizeForMatch(str1);
+    const s2 = normalizeForMatch(str2);
+
+    if (!s1 || !s2) return 0;
+    if (s1 === s2) return 1; // sama persis setelah normalisasi (mis. "SAWAH BESAR" = "Sawahbesar")
+
+    // Salah satu memuat yang lain (substring) → skor tinggi
+    if (s1.includes(s2) || s2.includes(s1)) {
+        const ratio = Math.min(s1.length, s2.length) / Math.max(s1.length, s2.length);
+        return 0.85 + 0.14 * ratio; // 0.85–0.99 tergantung seberapa dekat panjangnya
+    }
+
+    // Similaritas berbasis jarak Levenshtein (toleran typo & huruf tertukar)
+    const dist = levenshtein(s1, s2);
+    return 1 - dist / Math.max(s1.length, s2.length);
 }
 
 function findBestMatch(data, value, field = "nama", threshold = 0.7) {
@@ -163,9 +215,10 @@ function findBestMatch(data, value, field = "nama", threshold = 0.7) {
 
 function lookupExact(data, value, field = "nama") {
     if (!value || !data || data.length === 0) return null;
-    const normalizedValue = value.toString().trim().toLowerCase();
+    // Bandingkan setelah normalisasi supaya beda spasi/tanda baca tetap cocok
+    const normalizedValue = normalizeForMatch(value);
     const found = data.find((item) => {
-        const itemValue = item[field] ? item[field].toString().trim().toLowerCase() : "";
+        const itemValue = item[field] ? normalizeForMatch(item[field]) : "";
         return itemValue === normalizedValue;
     });
     return found || null;
@@ -179,9 +232,40 @@ function lookup(data, value, field = "nama", threshold = 0.7) {
     return findBestMatch(data, value, field, threshold);
 }
 
+// Ekspor terpisah supaya controller bisa mengatur prioritas exact vs fuzzy.
+function lookupExactOnly(data, value, field = "nama") {
+    return lookupExact(data, value, field);
+}
+function lookupFuzzyOnly(data, value, field = "nama", threshold = 0.7) {
+    if (!value || !data || data.length === 0) return null;
+    return findBestMatch(data, value, field, threshold);
+}
+
 function lookupId(data, value, field = "nama", threshold = 0.7) {
     const match = lookup(data, value, field, threshold);
     return match ? match.id : null;
+}
+
+// Cari nama kelurahan (atau item master apa pun) yang MUNCUL di dalam teks bebas
+// (mis. alamat "Lokasi Laka"). Berguna saat kolom kelurahan kosong/tidak match.
+// Mengembalikan item dengan nama terpanjang yang cocok (lebih spesifik).
+function findKelurahanInText(data, text, field = "nama") {
+    if (!text || !data || data.length === 0) return null;
+    const haystack = normalizeForMatch(text); // buang spasi/tanda baca
+    if (!haystack) return null;
+
+    let best = null;
+    let bestLen = 0;
+    for (const item of data) {
+        const nmeedle = item[field] ? normalizeForMatch(item[field]) : "";
+        // Nama minimal 4 huruf agar tidak asal cocok (hindari "kota", "desa", dll)
+        if (nmeedle.length < 4) continue;
+        if (haystack.includes(nmeedle) && nmeedle.length > bestLen) {
+            best = item;
+            bestLen = nmeedle.length;
+        }
+    }
+    return best;
 }
 
 function lookupPolresIdByKecamatan(kecamatanData, kecamatanNama) {
@@ -217,17 +301,45 @@ async function fetchHeaderRows(sheetName, headerStart = 4, headerEnd = 5) {
     return response.data.values || [];
 }
 
+// Ambil blok baris awal sheet (1-8) untuk deteksi posisi header yang dinamis.
+// Beberapa sheet menaruh header di baris 4-5, sebagian lain (mis. yang punya
+// baris judul ekstra) menggeser header ke baris 5-6.
+async function fetchTopBlock(sheetName, from = 1, to = 8) {
+    const range = `${sheetName}!A${from}:BD${to}`;
+    const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range,
+    });
+    return response.data.values || [];
+}
+
 function norm(s) {
     return (s || "").toString().toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 // Bangun mapping { colIndex: fieldName } dari 2 baris header (main + sub).
 // Mengembalikan null jika field kunci tidak terdeteksi (fallback ke statis).
-function detectColumnMapping(headerRows) {
-    if (!headerRows || headerRows.length === 0) return null;
+//
+// `input` bisa berupa:
+//   - blok baris atas sheet (mis. baris 1-8) → fungsi mencari sendiri baris
+//     header "main" (yang memuat "No LP") dan "sub" (baris berikutnya).
+//   - atau tepat 2 baris header (kompatibilitas lama).
+function detectColumnMapping(input) {
+    if (!input || input.length === 0) return null;
 
-    const main = headerRows[0] || [];
-    const sub = headerRows[1] || [];
+    // Cari baris header utama: baris yang memuat "no lp" / "nama korban".
+    let mainIdx = -1;
+    for (let r = 0; r < input.length; r++) {
+        const joined = (input[r] || []).map((c) => norm(c)).join("|");
+        if (joined.includes("no lp") || joined.includes("nama korban")) {
+            mainIdx = r;
+            break;
+        }
+    }
+
+    // Jika tidak ketemu (dipanggil dgn tepat 2 baris header lama), pakai indeks 0/1.
+    const main = mainIdx >= 0 ? (input[mainIdx] || []) : (input[0] || []);
+    const sub = mainIdx >= 0 ? (input[mainIdx + 1] || []) : (input[1] || []);
     const width = Math.max(main.length, sub.length);
 
     const mapping = {};
@@ -315,6 +427,9 @@ function parseRows(rows, startRow = 6, columnMapping = COLUMN_MAPPING) {
         if (columnMapping[key] === "nomor_urut") { nomorUrutIdx = parseInt(key); break; }
     }
 
+    // Menyimpan No LP terakhir yang terisi (untuk forward-fill baris lanjutan korban)
+    let lastNoLp = "";
+
     rows.forEach((row, index) => {
         if (!row || row.every((cell) => !cell || cell.toString().trim() === "")) return;
 
@@ -328,6 +443,14 @@ function parseRows(rows, startRow = 6, columnMapping = COLUMN_MAPPING) {
             const fieldName = columnMapping[key];
             obj[fieldName] = idx < row.length ? row[idx] || "" : "";
         });
+
+        // Forward-fill No LP: baris dengan No LP kosong = lanjutan korban dari LP
+        // di atasnya (merged cell di sheet). Warisi No LP terakhir yang terisi.
+        if (obj.no_lp && obj.no_lp.toString().trim() !== "") {
+            lastNoLp = obj.no_lp.toString().trim();
+        } else if (lastNoLp) {
+            obj.no_lp = lastNoLp;
+        }
 
         if (obj.nama_korban || obj.no_lp) {
             parsed.push(obj);
@@ -393,7 +516,12 @@ function groupByLp(parsedData) {
             masa_laku_sw_penjamin: item.masa_laku_sw_penjamin || "",
             kendaraan_index: null,
         };
-        grouped[noLp].korban.push(korbanData);
+        // Hanya anggap sebagai korban bila ADA NAMA. Baris tanpa nama
+        // (mis. baris kendaraan tambahan / sisa merge) tidak dihitung korban,
+        // tapi kendaraannya tetap diproses di bawah.
+        if (korbanData.nama && korbanData.nama.toString().trim() !== "") {
+            grouped[noLp].korban.push(korbanData);
+        }
 
         const kendaraanList = [];
         if (item.nopol_korban) {
@@ -413,14 +541,24 @@ function groupByLp(parsedData) {
 
         kendaraanList.forEach((k) => {
             if (!k.nopol) return;
-            const exists = grouped[noLp].kendaraan.some((existing) => existing.nopol === k.nopol);
-            if (!exists) {
+            const existing = grouped[noLp].kendaraan.find((e) => e.nopol === k.nopol);
+            if (!existing) {
                 grouped[noLp].kendaraan.push({
                     nopol: k.nopol,
                     jenis_kendaraan: k.jenis_kendaraan,
                     masa_laku_sw: k.masa_laku_sw,
                     peran: null,
                 });
+            } else {
+                // Nopol sama sudah ada — lengkapi field yang kosong dari baris lain.
+                // (mis. jenis kendaraan terisi di baris korban lain padahal
+                //  di baris pertama masih kosong).
+                if (!existing.jenis_kendaraan && k.jenis_kendaraan) {
+                    existing.jenis_kendaraan = k.jenis_kendaraan;
+                }
+                if (!existing.masa_laku_sw && k.masa_laku_sw) {
+                    existing.masa_laku_sw = k.masa_laku_sw;
+                }
             }
         });
     });
@@ -481,9 +619,13 @@ module.exports = {
     findBestMatch,
     lookup,
     lookupId,
+    lookupExactOnly,
+    lookupFuzzyOnly,
+    findKelurahanInText,
     lookupPolresIdByKecamatan,
     fetchSheetRows,
     fetchHeaderRows,
+    fetchTopBlock,
     detectColumnMapping,
     parseRows,
     groupByLp,

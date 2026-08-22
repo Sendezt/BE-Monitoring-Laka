@@ -54,7 +54,7 @@ const LaporanPolisi = sequelize.define(
 
     lokasi_laka: {
       type: DataTypes.STRING(255),
-      allowNull: false,
+      allowNull: true,
     },
 
     rumah_sakit_id: {

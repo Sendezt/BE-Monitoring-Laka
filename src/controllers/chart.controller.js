@@ -67,7 +67,7 @@ const getPerbandinganStatistik = async (req, res) => {
         const buildWhere = (start, end) => {
             const where = {
                 is_active: true,
-                tanggal_laka: { [Op.between]: [start, end] },
+                tanggal_lp: { [Op.between]: [start, end] },
             };
             if (polres_id && polres_id !== "ALL") {
                 where.polres_id = Number(polres_id);
@@ -188,8 +188,8 @@ const getTotalLakaPerWilayah = async (req, res) => {
 
         // Siapkan filter tanggal untuk LaporanPolisi
         const whereLaporan = { is_active: true };
-        if (from) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.gte]: from };
-        if (to) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.lte]: to };
+        if (from) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.gte]: from };
+        if (to) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.lte]: to };
 
         // Untuk setiap wilayah, hitung total laporan polisi
         const dataWilayah = await Promise.all(
@@ -245,8 +245,8 @@ const getTotalKorbanPerWilayah = async (req, res) => {
 
         // Siapkan filter tanggal untuk LaporanPolisi
         const whereLaporan = { is_active: true };
-        if (from) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.gte]: from };
-        if (to) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.lte]: to };
+        if (from) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.gte]: from };
+        if (to) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.lte]: to };
 
         // Untuk setiap wilayah, hitung total korban
         const dataWilayah = await Promise.all(
@@ -305,8 +305,8 @@ const getStatistikKasusTabrak = async (req, res) => {
         // Base filter untuk LaporanPolisi
         const baseWhere = { is_active: true };
 
-        if (from) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.gte]: from };
-        if (to) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.lte]: to };
+        if (from) baseWhere.tanggal_lp = { ...baseWhere.tanggal_lp, [Op.gte]: from };
+        if (to) baseWhere.tanggal_lp = { ...baseWhere.tanggal_lp, [Op.lte]: to };
         if (polres_id) baseWhere.polres_id = Number(polres_id);
         if (kecamatan_id) baseWhere.kecamatan_id = Number(kecamatan_id);
 
@@ -397,8 +397,8 @@ const getStatistikKorbanByProfesi = async (req, res) => {
         // Base filter untuk LaporanPolisi (dipakai di nested include)
         const whereLaporan = { is_active: true };
 
-        if (from) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.gte]: from };
-        if (to) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.lte]: to };
+        if (from) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.gte]: from };
+        if (to) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.lte]: to };
         if (polres_id) whereLaporan.polres_id = Number(polres_id);
         if (kecamatan_id) whereLaporan.kecamatan_id = Number(kecamatan_id);
 
@@ -509,8 +509,8 @@ const getStatistikKorbanByJenisKendaraan = async (req, res) => {
         // Base filter untuk LaporanPolisi (dipakai di nested include)
         const whereLaporan = { is_active: true };
 
-        if (from) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.gte]: from };
-        if (to) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.lte]: to };
+        if (from) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.gte]: from };
+        if (to) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.lte]: to };
         if (polres_id) whereLaporan.polres_id = Number(polres_id);
         if (kecamatan_id) whereLaporan.kecamatan_id = Number(kecamatan_id);
 
@@ -634,8 +634,8 @@ const getTop20KecamatanLaka = async (req, res) => {
         // Base filter untuk LaporanPolisi
         const whereLaporan = { is_active: true };
 
-        if (from) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.gte]: from };
-        if (to) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.lte]: to };
+        if (from) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.gte]: from };
+        if (to) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.lte]: to };
         if (polres_id && polres_id !== "ALL") {
             whereLaporan.polres_id = Number(polres_id);
         }
@@ -702,8 +702,8 @@ const getTop15RumahSakitKorban = async (req, res) => {
             rumah_sakit_id: { [Op.ne]: null },
         };
 
-        if (from) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.gte]: from };
-        if (to) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.lte]: to };
+        if (from) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.gte]: from };
+        if (to) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.lte]: to };
         if (polres_id) whereLaporan.polres_id = Number(polres_id);
         if (kecamatan_id) whereLaporan.kecamatan_id = Number(kecamatan_id);
 
@@ -791,7 +791,7 @@ const generateDateRange = (start, end) => {
 const fetchLaporanPerDay = async (start, end, polresId, userWilayahId) => {
     const where = {
         is_active: true,
-        tanggal_laka: { [Op.between]: [start, end] },
+        tanggal_lp: { [Op.between]: [start, end] },
     };
 
     if (polresId && polresId !== "ALL") {
@@ -811,18 +811,18 @@ const fetchLaporanPerDay = async (start, end, polresId, userWilayahId) => {
 
     const rows = await LaporanPolisi.findAll({
         attributes: [
-            "tanggal_laka",
+            "tanggal_lp",
             [sequelize.fn("COUNT", sequelize.col("LaporanPolisi.id")), "total_lp"],
         ],
         where,
         include,
-        group: ["tanggal_laka"],
+        group: ["tanggal_lp"],
         raw: true,
     });
 
     const map = {};
     rows.forEach((row) => {
-        map[row.tanggal_laka] = parseInt(row.total_lp, 10) || 0;
+        map[row.tanggal_lp] = parseInt(row.total_lp, 10) || 0;
     });
     return map;
 };
@@ -833,7 +833,7 @@ const fetchLaporanPerDay = async (start, end, polresId, userWilayahId) => {
 const fetchKorbanPerDay = async (start, end, polresId, userWilayahId) => {
     const whereLaporan = {
         is_active: true,
-        tanggal_laka: { [Op.between]: [start, end] },
+        tanggal_lp: { [Op.between]: [start, end] },
     };
 
     if (polresId && polresId !== "ALL") {
@@ -862,18 +862,18 @@ const fetchKorbanPerDay = async (start, end, polresId, userWilayahId) => {
 
     const rows = await Korban.findAll({
         attributes: [
-            [sequelize.col("laporanPolisi.tanggal_laka"), "tanggal_laka"],
+            [sequelize.col("laporanPolisi.tanggal_lp"), "tanggal_lp"],
             [sequelize.fn("COUNT", sequelize.col("Korban.id")), "total_korban"],
         ],
         where: { is_active: true },
         include: [includeLaporan],
-        group: ["laporanPolisi.tanggal_laka"],
+        group: ["laporanPolisi.tanggal_lp"],
         raw: true,
     });
 
     const map = {};
     rows.forEach((row) => {
-        map[row.tanggal_laka] = parseInt(row.total_korban, 10) || 0;
+        map[row.tanggal_lp] = parseInt(row.total_korban, 10) || 0;
     });
     return map;
 };
@@ -979,8 +979,8 @@ const getStatistikHariKejadian = async (req, res) => {
         // Base filter untuk LaporanPolisi
         const whereLaporan = { is_active: true };
 
-        if (from) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.gte]: from };
-        if (to) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.lte]: to };
+        if (from) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.gte]: from };
+        if (to) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.lte]: to };
         if (polres_id && polres_id !== "ALL") {
             whereLaporan.polres_id = Number(polres_id);
         }
@@ -1048,8 +1048,8 @@ const getTop10PolresPenerbitanLPTerlama = async (req, res) => {
         // Base filter untuk LaporanPolisi
         const whereLaporan = { is_active: true };
 
-        if (from) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.gte]: from };
-        if (to) whereLaporan.tanggal_laka = { ...whereLaporan.tanggal_laka, [Op.lte]: to };
+        if (from) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.gte]: from };
+        if (to) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.lte]: to };
         if (polres_id && polres_id !== "ALL") {
             whereLaporan.polres_id = Number(polres_id);
         }
@@ -1109,3 +1109,5 @@ module.exports = {
     getStatistikHariKejadian,
     getTop10PolresPenerbitanLPTerlama
 };
+
+

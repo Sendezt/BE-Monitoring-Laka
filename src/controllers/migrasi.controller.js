@@ -32,11 +32,16 @@ const {
     KENDARAAN_KEYWORD_MAP,
     formatDate,
     formatMasaLakuSW,
+    stringSimilarity,
     lookup,
     lookupId,
+    lookupExactOnly,
+    lookupFuzzyOnly,
+    findKelurahanInText,
     lookupPolresIdByKecamatan,
     fetchSheetRows,
     fetchHeaderRows,
+    fetchTopBlock,
     detectColumnMapping,
     parseRows,
     groupByLp,
@@ -50,7 +55,6 @@ const REQUIRED_FIELDS = [
     "tanggal_lp",
     "kecamatan_id",
     "kelurahan_id",
-    "lokasi_laka",
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -77,7 +81,7 @@ async function loadMasterData() {
         Polres.findAll({ ...opts, attributes: ["id", "nama", "wilayah_id"] }),
         Kecamatan.findAll({ ...opts, attributes: ["id", "nama", "polres_id"] }),
         Kelurahan.findAll({ ...opts, attributes: ["id", "nama", "kecamatan_id"] }),
-        RumahSakit.findAll({ ...opts, attributes: ["id", "nama"] }),
+        RumahSakit.findAll({ ...opts, attributes: ["id", "nama", "wilayah_id"] }),
         JenisKendaraan.findAll({ ...opts, attributes: ["id", "nama"] }),
         Profesi.findAll({ ...opts, attributes: ["id", "nama"] }),
         Cidera.findAll({ ...opts, attributes: ["id", "nama"] }),
@@ -107,9 +111,89 @@ async function loadMasterData() {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Deteksi polres sebuah sheet secara OTOMATIS (1 sheet = 1 polres).
+// Strategi berlapis:
+//   1. Baca judul sheet (baris 1-3) → cari "POLRES XXX" cocokkan ke master.
+//   2. Voting: cocokkan kecamatan tiap LP ke master, polres terbanyak menang.
+// Mengembalikan { polresId, source }.
+// ─────────────────────────────────────────────────────────────
+function detectSheetPolres(titleRows, grouped, master) {
+    // Normalisasi nama polres: buang prefix (polres/polresta/polrestabes),
+    // titik, "kab", spasi berlebih → sisakan nama kotanya saja.
+    const cleanPolresName = (s) =>
+        (s || "")
+            .toString()
+            .toLowerCase()
+            .replace(/polrestabes|polresta|polres/g, "")
+            .replace(/kab\.?|kabupaten|kota/g, "")
+            .replace(/[^a-z\s]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+    // ── Strategi 1: VOTING kecamatan (paling andal & otoritatif) ──
+    // kecamatan.polres_id di DB pasti benar, dan mayoritas menang sehingga
+    // tahan terhadap beberapa kecamatan yang ambigu/salah ketik.
+    // Juga bisa membedakan polres di kota yang sama (mis. Polresta Magelang
+    // vs Polres Kab.Magelang) karena kecamatannya berbeda.
+    const votes = {};
+    for (const noLp of Object.keys(grouped)) {
+        const kecText = grouped[noLp].laporan.kecamatan;
+        if (!kecText) continue;
+        const kec = lookup(master.kecamatan, kecText);
+        if (kec && kec.polres_id) {
+            votes[kec.polres_id] = (votes[kec.polres_id] || 0) + 1;
+        }
+    }
+    let winnerId = null;
+    let winnerVotes = 0;
+    let totalVotes = 0;
+    for (const [pid, v] of Object.entries(votes)) {
+        totalVotes += v;
+        if (v > winnerVotes) {
+            winnerVotes = v;
+            winnerId = parseInt(pid, 10);
+        }
+    }
+    // Terima hasil voting bila cukup meyakinkan (mayoritas jelas)
+    if (winnerId && winnerVotes >= 2) {
+        return { polresId: winnerId, source: `voting kecamatan (${winnerVotes}/${totalVotes} LP)` };
+    }
+
+    // ── Strategi 2: judul sheet (cadangan bila voting lemah) ──
+    const titleText = (titleRows || [])
+        .flat()
+        .map((c) => (c || "").toString())
+        .join(" ");
+    const m = titleText.match(/polres(?:tabes|ta)?\s*\.?\s*([a-z][a-z.\s]*)/i);
+    if (m) {
+        const namaKandidat = cleanPolresName(m[1]);
+        if (namaKandidat) {
+            let best = null;
+            let bestScore = 0;
+            for (const p of master.polres) {
+                const namaMaster = cleanPolresName(p.nama);
+                const score = stringSimilarity(namaKandidat, namaMaster);
+                if (score > bestScore && score >= 0.8) {
+                    bestScore = score;
+                    best = p;
+                }
+            }
+            if (best) return { polresId: best.id, source: `judul sheet ("${m[0].trim()}")` };
+        }
+    }
+
+    // Fallback terakhir: pemenang voting walau cuma 1 suara
+    if (winnerId) {
+        return { polresId: winnerId, source: `voting kecamatan (${winnerVotes}/${totalVotes} LP)` };
+    }
+
+    return { polresId: null, source: "gagal deteksi" };
+}
+
+// ─────────────────────────────────────────────────────────────
 // Map 1 group LP → payload dengan ID + kumpulan issue mapping
 // ─────────────────────────────────────────────────────────────
-function mapGroupToPayload(group, master) {
+function mapGroupToPayload(group, master, forcedPolresId = null) {
     const laporan = group.laporan;
     const issues = []; // { field, value } → teks Excel yang tidak match master
 
@@ -133,22 +217,75 @@ function mapGroupToPayload(group, master) {
         ? ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"][new Date(tanggalLaka).getDay()]
         : null);
 
-    // Kecamatan
-    const kecamatanMatch = lookup(master.kecamatan, laporan.kecamatan);
+    // Kecamatan — bila polres dipaksa (1 sheet = 1 polres), batasi pencarian
+    // kecamatan HANYA ke kecamatan milik polres itu. Ini mencegah salah match
+    // ke kecamatan bernama sama di polres lain (mis. "Bawang" di Banjarnegara
+    // padahal ini sheet Batang).
+    const kecamatanPool = forcedPolresId
+        ? master.kecamatan.filter((k) => k.polres_id === forcedPolresId)
+        : master.kecamatan;
+    const kecamatanMatch = lookup(kecamatanPool, laporan.kecamatan);
     const kecamatanId = kecamatanMatch ? kecamatanMatch.id : null;
     if (!kecamatanId && laporan.kecamatan) issues.push({ field: "kecamatan", value: laporan.kecamatan });
 
-    // Kelurahan
-    const kelurahanId = lookupId(master.kelurahan, laporan.kelurahan);
+    // Kelurahan — urutan prioritas (dari paling meyakinkan):
+    //  1. Exact match teks kelurahan (dalam scope kecamatan → global)
+    //  2. Nama kelurahan yang PERSIS muncul di teks Lokasi Laka
+    //     (lebih dipercaya daripada tebakan fuzzy yang bisa salah)
+    //  3. Fuzzy match teks kelurahan (dalam scope kecamatan → global)
+    const kelurahanScope = kecamatanId
+        ? master.kelurahan.filter((k) => k.kecamatan_id === kecamatanId)
+        : master.kelurahan;
+
+    let kelurahanMatch = null;
+    let kelurahanFromLokasi = false;
+
+    // 1. Exact
+    kelurahanMatch = lookupExactOnly(kelurahanScope, laporan.kelurahan);
+    if (!kelurahanMatch && kecamatanId) {
+        kelurahanMatch = lookupExactOnly(master.kelurahan, laporan.kelurahan);
+    }
+
+    // 2. Deteksi dari Lokasi Laka (nama kelurahan tercantum di alamat)
+    if (!kelurahanMatch && laporan.lokasi_laka) {
+        kelurahanMatch = findKelurahanInText(kelurahanScope, laporan.lokasi_laka);
+        if (!kelurahanMatch && kecamatanId) {
+            kelurahanMatch = findKelurahanInText(master.kelurahan, laporan.lokasi_laka);
+        }
+        if (kelurahanMatch) kelurahanFromLokasi = true;
+    }
+
+    // 3. Fuzzy match teks kelurahan (paling akhir, confidence terendah)
+    if (!kelurahanMatch) {
+        kelurahanMatch = lookupFuzzyOnly(kelurahanScope, laporan.kelurahan);
+        if (!kelurahanMatch && kecamatanId) {
+            kelurahanMatch = lookupFuzzyOnly(master.kelurahan, laporan.kelurahan);
+        }
+    }
+
+    const kelurahanId = kelurahanMatch ? kelurahanMatch.id : null;
     if (!kelurahanId && laporan.kelurahan) issues.push({ field: "kelurahan", value: laporan.kelurahan });
 
-    // Rumah sakit (opsional)
-    const rumahSakitId = lookupId(master.rumahSakit, laporan.rs_sendiri);
+    // Rumah sakit (opsional) — batasi ke RS milik wilayah polres sheet.
+    // RS berelasi ke wilayah (bukan polres), jadi ambil wilayah_id dari polres.
+    const forcedPolres = forcedPolresId
+        ? master.polres.find((p) => p.id === forcedPolresId)
+        : null;
+    const forcedWilayahId = forcedPolres ? forcedPolres.wilayah_id : null;
+    const rumahSakitPool = forcedWilayahId
+        ? master.rumahSakit.filter((rs) => rs.wilayah_id === forcedWilayahId)
+        : master.rumahSakit;
+    let rumahSakitId = lookupId(rumahSakitPool, laporan.rs_sendiri);
+    // Fallback: kalau tidak ketemu dalam wilayah, cari ke seluruh RS
+    if (!rumahSakitId && forcedWilayahId && laporan.rs_sendiri) {
+        rumahSakitId = lookupId(master.rumahSakit, laporan.rs_sendiri);
+    }
     if (!rumahSakitId && laporan.rs_sendiri) issues.push({ field: "rumah_sakit", value: laporan.rs_sendiri });
 
-    // Polres: dari kecamatan yang termatch → polres_id
-    let polresId = null;
-    if (kecamatanMatch) polresId = kecamatanMatch.polres_id || null;
+    // Polres: prioritas polres yang dipaksa dari pilihan sheet (1 sheet = 1 polres).
+    // Jika tidak dipaksa, ambil dari kecamatan yang termatch.
+    let polresId = forcedPolresId || null;
+    if (!polresId && kecamatanMatch) polresId = kecamatanMatch.polres_id || null;
     if (!polresId) polresId = lookupPolresIdByKecamatan(master.kecamatan, laporan.kecamatan);
     if (!polresId && laporan.kecamatan) issues.push({ field: "polres", value: laporan.kecamatan });
 
@@ -237,7 +374,8 @@ function mapGroupToPayload(group, master) {
     payload.labels = {
         polres: nameById(master.polres, polresId),
         kecamatan: kecamatanMatch ? kecamatanMatch.nama : null,
-        kelurahan: nameById(master.kelurahan, kelurahanId),
+        kelurahan: kelurahanMatch ? kelurahanMatch.nama : null,
+        kelurahan_from_lokasi: kelurahanFromLokasi,
         rumah_sakit: nameById(master.rumahSakit, rumahSakitId),
         kasus_tabrak_kecelakaan: nameById(master.kasusTabrak, kasusTabrakId),
         faktor_penyebab_laka: nameById(master.faktorPenyebab, faktorPenyebabId),
@@ -267,22 +405,30 @@ function getMissingFields(payload) {
 async function insertLaporanPayload(payload, req) {
     const t = await sequelize.transaction();
     try {
+        // Potong string agar tidak melebihi batas kolom DB (data sheet sering
+        // tidak konsisten / kepanjangan). Ambil karakter awal, sisanya dibuang.
+        const cut = (v, max) => {
+            if (v === null || v === undefined) return v;
+            const s = String(v).trim();
+            return s.length > max ? s.slice(0, max) : s;
+        };
+
         const diffMs = new Date(payload.tanggal_lp) - new Date(payload.tanggal_laka);
         const telat_lp = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
 
         const laporanPolisi = await LaporanPolisi.create(
             {
-                no_lp: String(payload.no_lp).trim(),
+                no_lp: cut(payload.no_lp, 100),
                 polres_id: Number(payload.polres_id),
                 tanggal_laka: payload.tanggal_laka,
-                hari_kejadian: String(payload.hari_kejadian).trim(),
+                hari_kejadian: cut(payload.hari_kejadian, 20),
                 tanggal_lp: payload.tanggal_lp,
                 telat_lp,
                 kecamatan_id: Number(payload.kecamatan_id),
                 kelurahan_id: Number(payload.kelurahan_id),
-                lokasi_laka: String(payload.lokasi_laka).trim(),
+                lokasi_laka: cut(payload.lokasi_laka, 255) || null,
                 rumah_sakit_id: payload.rumah_sakit_id ? Number(payload.rumah_sakit_id) : null,
-                rumah_sakit_wilayah: payload.rumah_sakit_wilayah ?? null,
+                rumah_sakit_wilayah: cut(payload.rumah_sakit_wilayah, 150) ?? null,
                 laka_tunggal: payload.laka_tunggal ?? false,
                 kasus_tabrak_kecelakaan_id: payload.kasus_tabrak_kecelakaan_id
                     ? Number(payload.kasus_tabrak_kecelakaan_id) : null,
@@ -296,17 +442,22 @@ async function insertLaporanPayload(payload, req) {
             { transaction: t }
         );
 
-        // Kendaraan
+        // Kendaraan — hanya simpan yang lengkap (punya jenis_kendaraan_id & nopol).
+        // Kendaraan yang tidak lengkap (mis. penjamin kosong) dilewati.
+        // Peta index: index ASLI di payload → id kendaraan yang tersimpan.
         const kendaraanIndexMap = {};
         const kendaraanArr = Array.isArray(payload.kendaraan) ? payload.kendaraan : [];
         for (let i = 0; i < kendaraanArr.length; i++) {
             const k = kendaraanArr[i];
+            const nopol = cut(k.nopol, 20) || "";
+            // Lewati kendaraan tidak lengkap agar tidak melanggar NOT NULL
+            if (!k.jenis_kendaraan_id || !nopol) continue;
             const newKendaraan = await Kendaraan.create(
                 {
                     laporan_polisi_id: laporanPolisi.id,
                     peran: k.peran,
-                    jenis_kendaraan_id: k.jenis_kendaraan_id ? Number(k.jenis_kendaraan_id) : null,
-                    nopol: k.nopol ? String(k.nopol).trim() : null,
+                    jenis_kendaraan_id: Number(k.jenis_kendaraan_id),
+                    nopol,
                     masa_laku_sw: k.masa_laku_sw || null,
                     is_active: true,
                 },
@@ -325,7 +476,7 @@ async function insertLaporanPayload(payload, req) {
             await Korban.create(
                 {
                     laporan_polisi_id: laporanPolisi.id,
-                    nama: String(krb.nama || "").trim(),
+                    nama: cut(krb.nama, 150) || "",
                     usia: krb.usia ? Number(krb.usia) : null,
                     profesi_id: krb.profesi_id ? Number(krb.profesi_id) : null,
                     cidera_id: krb.cidera_id ? Number(krb.cidera_id) : null,
@@ -380,24 +531,44 @@ const getSheetData = async (req, res) => {
         const startRow = parseInt(req.query.startRow, 10) || 6;
         const endRow = parseInt(req.query.endRow, 10) || 50;
 
-        const [master, rows, headerRows] = await Promise.all([
+        logger.progress("MIGRASI", `Mulai baca Sheet "${sheetName}" baris ${startRow}-${endRow}`);
+
+        const [master, rows, topBlock] = await Promise.all([
             loadMasterData(),
             fetchSheetRows(sheetName, startRow, endRow),
-            fetchHeaderRows(sheetName, 4, 5).catch(() => []),
+            fetchTopBlock(sheetName, 1, 8).catch(() => []),
         ]);
+        logger.progress("MIGRASI", `Master data dimuat & ${rows ? rows.length : 0} baris ditarik dari Google Sheets`);
 
         if (!rows || rows.length === 0) {
+            logger.progress("MIGRASI", `Sheet "${sheetName}" kosong pada rentang baris ini`);
             return successResponse(res, 200, "Tidak ada data pada sheet ini", {
                 sheet: sheetName,
                 rows: [],
             });
         }
 
-        // Deteksi mapping kolom dari header (menangani sheet yang kolomnya bergeser).
-        // Bila deteksi gagal, gunakan mapping statis default.
-        const dynamicMapping = detectColumnMapping(headerRows);
+        // Deteksi mapping kolom dari header (menangani sheet yang kolomnya bergeser
+        // maupun posisi baris header yang berbeda). Bila gagal → mapping statis default.
+        const dynamicMapping = detectColumnMapping(topBlock);
+        logger.progress("MIGRASI", `Deteksi kolom: ${dynamicMapping ? "DINAMIS (dari header)" : "STATIS (default)"}`);
         const parsed = parseRows(rows, startRow, dynamicMapping || undefined);
         const grouped = groupByLp(parsed);
+        logger.progress("MIGRASI", `Parsing selesai: ${parsed.length} baris data → ${Object.keys(grouped).length} No LP (grouped)`);
+
+        // ── Deteksi polres otomatis (1 sheet = 1 polres) ──────────────
+        const { polresId: sheetPolresId, source: polresSource } =
+            detectSheetPolres(topBlock, grouped, master);
+        const sheetPolresNama = sheetPolresId
+            ? (master.polres.find((p) => p.id === sheetPolresId)?.nama || null)
+            : null;
+        const sheetWilayahId = sheetPolresId
+            ? (master.polres.find((p) => p.id === sheetPolresId)?.wilayah_id || null)
+            : null;
+        logger.progress(
+            "MIGRASI",
+            `Polres sheet: ${sheetPolresNama ? `${sheetPolresNama} (id ${sheetPolresId})` : "TIDAK TERDETEKSI"} — sumber: ${polresSource}`
+        );
 
         // No LP yang sudah ada di DB — cek duplikat berbasis (no_lp + polres_id).
         // No LP yang sama boleh ada di polres berbeda; yang dilarang hanya
@@ -415,9 +586,10 @@ const getSheetData = async (req, res) => {
             (a, b) => (grouped[a].laporan._baris || 0) - (grouped[b].laporan._baris || 0)
         );
 
+        let cValid = 0, cInvalid = 0, cDup = 0;
         const resultRows = sortedKeys.map((noLp) => {
             const group = grouped[noLp];
-            const { payload, issues } = mapGroupToPayload(group, master);
+            const { payload, issues } = mapGroupToPayload(group, master, sheetPolresId);
             const missing = getMissingFields(payload);
             // Duplikat hanya jika polres_id termapping DAN kombinasi sudah ada
             const duplicate =
@@ -427,6 +599,10 @@ const getSheetData = async (req, res) => {
             let status = "VALID";
             if (missing.length > 0 || issues.length > 0) status = "INVALID_MASTER";
             if (duplicate) status = "DUPLICATE";
+
+            if (status === "VALID") cValid++;
+            else if (status === "DUPLICATE") cDup++;
+            else cInvalid++;
 
             return {
                 no_lp: noLp,
@@ -440,10 +616,15 @@ const getSheetData = async (req, res) => {
             };
         });
 
+        logger.progress("MIGRASI", `Validasi selesai — Siap:${cValid} | TidakCocok:${cInvalid} | Duplikat:${cDup}. Mengirim ke UI.`);
+
         return successResponse(res, 200, "Data sheet berhasil diambil", {
             sheet: sheetName,
             start_row: startRow,
             end_row: endRow,
+            detected_polres: sheetPolresNama,
+            detected_polres_id: sheetPolresId,
+            detected_wilayah_id: sheetWilayahId,
             total: resultRows.length,
             rows: resultRows,
         });
@@ -544,13 +725,20 @@ const importRow = async (req, res) => {
         }
 
         const laporan = await insertLaporanPayload(payload, req);
+        logger.progress("MIGRASI", `Import OK — LP "${payload.no_lp}" (polres ${payload.polres_id}) → id #${laporan.id}, ${Array.isArray(payload.korban) ? payload.korban.length : 0} korban`);
 
         const result = await LaporanPolisi.findByPk(laporan.id);
 
         return successResponse(res, 201, "Baris berhasil diimpor ke database", result);
     } catch (error) {
         logger.error("Import row error", error);
-        return errorResponse(res, 500, "Gagal mengimpor baris ke database");
+        // Sertakan pesan error asli agar penyebab kegagalan terlihat di UI
+        const detail =
+            error?.errors?.[0]?.message ||
+            error?.parent?.sqlMessage ||
+            error?.message ||
+            null;
+        return errorResponse(res, 500, "Gagal mengimpor baris ke database", detail);
     }
 };
 
