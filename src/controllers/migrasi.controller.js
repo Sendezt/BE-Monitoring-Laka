@@ -178,6 +178,7 @@ function mapGroupToPayload(group, master) {
         tanggal_lp: tanggalLp,
         kecamatan_id: kecamatanId,
         kelurahan_id: kelurahanId,
+        kelurahan_nama: laporan.kelurahan || null,
         lokasi_laka: laporan.lokasi_laka || "",
         rumah_sakit_id: rumahSakitId,
         rumah_sakit_wilayah: laporan.rs_lain || null,
@@ -509,13 +510,36 @@ const checkRow = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 const importRow = async (req, res) => {
     try {
-        const { payload } = req.body;
+        const { payload, createMissingMaster = false } = req.body;
 
         if (!payload || !payload.no_lp) {
             return errorResponse(res, 400, "payload dengan no_lp wajib dikirim");
         }
 
-        // Validasi field wajib
+        // --- 1. Penanganan kelurahan jika hilang (SEBELUM validasi) ---
+        if (!payload.kelurahan_id && payload.kelurahan_nama) {
+            if (!createMissingMaster) {
+                return errorResponse(
+                    res,
+                    400,
+                    `Kelurahan "${payload.kelurahan_nama}" tidak ditemukan. Silakan tambahkan ke master terlebih dahulu atau kirim flag createMissingMaster=true`
+                );
+            }
+            const kecamatanId = payload.kecamatan_id;
+            if (!kecamatanId) {
+                return errorResponse(res, 400, "Kecamatan tidak ditemukan, tidak dapat membuat kelurahan");
+            }
+            const [newKel] = await Kelurahan.findOrCreate({
+                where: {
+                    nama: payload.kelurahan_nama.trim(),
+                    kecamatan_id: kecamatanId,
+                },
+                defaults: { is_active: true },
+            });
+            payload.kelurahan_id = newKel.id; // set ID agar insert berhasil
+        }
+
+        // --- 2. Validasi field wajib (sekarang kelurahan_id sudah terisi) ---
         const missing = getMissingFields(payload);
         if (missing.length > 0) {
             return errorResponse(
@@ -525,8 +549,7 @@ const importRow = async (req, res) => {
             );
         }
 
-        // Cek duplikat berbasis (no_lp + polres_id): No LP boleh sama di polres
-        // berbeda, tetapi tidak boleh sama persis pada polres yang sama.
+        // --- 3. Cek duplikat ---
         const existing = await LaporanPolisi.findOne({
             where: {
                 no_lp: String(payload.no_lp).trim(),
@@ -544,9 +567,7 @@ const importRow = async (req, res) => {
         }
 
         const laporan = await insertLaporanPayload(payload, req);
-
         const result = await LaporanPolisi.findByPk(laporan.id);
-
         return successResponse(res, 201, "Baris berhasil diimpor ke database", result);
     } catch (error) {
         logger.error("Import row error", error);
