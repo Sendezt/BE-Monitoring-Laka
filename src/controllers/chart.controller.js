@@ -11,7 +11,8 @@ const {
     JenisKendaraan,
     Kendaraan,
     Kecamatan,
-    RumahSakit
+    RumahSakit,
+    Cidera,
 } = require("../models");
 
 const {
@@ -162,6 +163,117 @@ const getPerbandinganStatistik = async (req, res) => {
     } catch (error) {
         logger.error("Get perbandingan statistik error", error);
         return errorResponse(res, 500, "Failed to retrieve perbandingan statistik");
+    }
+};
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/chart/perbandingan-cidera
+// Query: tanggal_awal, tanggal_akhir, polres_id (opsional/ALL)
+// Bandingkan jumlah korban per kategori cidera (LL, LL-MD, MD)
+// antara periode utama dan periode pembanding (mundur 1 bulan).
+// ─────────────────────────────────────────────────────────────
+const getPerbandinganCidera = async (req, res) => {
+    try {
+        const { tanggal_awal, tanggal_akhir, polres_id } = req.query;
+
+        if (!tanggal_awal || !tanggal_akhir) {
+            return errorResponse(res, 400, "Parameter tanggal_awal dan tanggal_akhir wajib diisi");
+        }
+        if (new Date(tanggal_awal) > new Date(tanggal_akhir)) {
+            return errorResponse(res, 400, "tanggal_awal tidak boleh lebih besar dari tanggal_akhir");
+        }
+
+        const mainStart = tanggal_awal;
+        const mainEnd = tanggal_akhir;
+        const cmpStart = shiftOneMonthBack(tanggal_awal);
+        const cmpEnd = shiftOneMonthBack(tanggal_akhir);
+
+        // Scope wilayah untuk role user
+        const includePolres = [];
+        if (req.user?.role === "user") {
+            includePolres.push({
+                model: Polres,
+                as: "polres",
+                attributes: [],
+                where: { wilayah_id: req.user.wilayah_id },
+                required: true,
+            });
+        }
+
+        const buildLaporanWhere = (start, end) => {
+            const where = { is_active: true, tanggal_lp: { [Op.between]: [start, end] } };
+            if (polres_id && polres_id !== "ALL") where.polres_id = Number(polres_id);
+            return where;
+        };
+
+        // Ambil id cidera per kategori (nama persis: LL, LL-MD, MD)
+        const namaCidera = ["LL", "LL-MD", "MD"];
+        const cideraRecords = await Cidera.findAll({
+            where: { nama: { [Op.in]: namaCidera } },
+            attributes: ["id", "nama"],
+            raw: true,
+        });
+        const idByNama = {};
+        for (const nama of namaCidera) {
+            idByNama[nama] = cideraRecords.filter((c) => c.nama === nama).map((c) => c.id);
+        }
+
+        // Hitung korban per kategori cidera pada satu periode
+        const countCidera = async (start, end, cideraIds) => {
+            if (!cideraIds || cideraIds.length === 0) return 0;
+            return Korban.count({
+                where: { is_active: true, cidera_id: { [Op.in]: cideraIds } },
+                include: [
+                    {
+                        model: LaporanPolisi,
+                        as: "laporanPolisi",
+                        required: true,
+                        attributes: [],
+                        where: buildLaporanWhere(start, end),
+                        include: includePolres,
+                    },
+                ],
+            });
+        };
+
+        const [
+            mainLL, mainLLMD, mainMD,
+            cmpLL, cmpLLMD, cmpMD,
+        ] = await Promise.all([
+            countCidera(mainStart, mainEnd, idByNama["LL"]),
+            countCidera(mainStart, mainEnd, idByNama["LL-MD"]),
+            countCidera(mainStart, mainEnd, idByNama["MD"]),
+            countCidera(cmpStart, cmpEnd, idByNama["LL"]),
+            countCidera(cmpStart, cmpEnd, idByNama["LL-MD"]),
+            countCidera(cmpStart, cmpEnd, idByNama["MD"]),
+        ]);
+
+        const data = {
+            periode_utama: {
+                tanggal_awal: mainStart,
+                tanggal_akhir: mainEnd,
+                ll: mainLL,
+                ll_md: mainLLMD,
+                md: mainMD,
+            },
+            periode_pembanding: {
+                tanggal_awal: cmpStart,
+                tanggal_akhir: cmpEnd,
+                ll: cmpLL,
+                ll_md: cmpLLMD,
+                md: cmpMD,
+            },
+            selisih: {
+                ll: mainLL - cmpLL,
+                ll_md: mainLLMD - cmpLLMD,
+                md: mainMD - cmpMD,
+            },
+        };
+
+        return successResponse(res, 200, "Perbandingan cidera retrieved successfully", data);
+    } catch (error) {
+        logger.error("Get perbandingan cidera error", error);
+        return errorResponse(res, 500, "Failed to retrieve perbandingan cidera");
     }
 };
 
@@ -1098,6 +1210,7 @@ const getTop10PolresPenerbitanLPTerlama = async (req, res) => {
 
 module.exports = {
     getPerbandinganStatistik,
+    getPerbandinganCidera,
     getTotalLakaPerWilayah,
     getTotalKorbanPerWilayah,
     getStatistikKasusTabrak,

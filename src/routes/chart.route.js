@@ -2,6 +2,7 @@ const express = require("express");
 
 const {
     getPerbandinganStatistik,
+    getPerbandinganCidera,
     getTotalLakaPerWilayah,
     getTotalKorbanPerWilayah,
     getStatistikKasusTabrak,
@@ -124,6 +125,34 @@ const router = express.Router();
  *         description: Failed to retrieve perbandingan statistik
  */
 router.get("/perbandingan", verifyToken, getPerbandinganStatistik);
+
+/**
+ * @swagger
+ * /api/chart/perbandingan-cidera:
+ *   get:
+ *     summary: Perbandingan korban per kategori cidera antara dua periode
+ *     description: Membandingkan jumlah korban per kategori cidera (LL, LL-MD, MD) antara periode utama dan periode pembanding (mundur 1 bulan).
+ *     tags: [Chart]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: tanggal_awal
+ *         required: true
+ *         schema: { type: string, format: date }
+ *       - in: query
+ *         name: tanggal_akhir
+ *         required: true
+ *         schema: { type: string, format: date }
+ *       - in: query
+ *         name: polres_id
+ *         schema: { type: string }
+ *         description: ID polres atau ALL
+ *     responses:
+ *       200:
+ *         description: Perbandingan cidera retrieved successfully
+ */
+router.get("/perbandingan-cidera", verifyToken, getPerbandinganCidera);
 
 /**
  * @swagger
