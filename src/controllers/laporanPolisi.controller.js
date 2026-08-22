@@ -18,6 +18,7 @@ const {
     FaktorPenyebabLaka,
     JenisKendaraan,
     Profesi,
+    Wilayah,
     Cidera,
     ActivityLog,
 } = require("../models");
@@ -156,7 +157,7 @@ const detailInclude = [
 // ─────────────────────────────────────────────────────────────
 const getLaporanPolisi = async (req, res) => {
     try {
-        const { from, to, no_lp, kecamatan_id, polres_id, page = 1, limit = 10 } = req.query;
+        const { from, to, no_lp, kecamatan_id, polres_id, page = 1, limit = 10, sort_by = 'tanggal_laka', sort_dir = 'DESC' } = req.query;
 
         const pageNum = Math.max(1, parseInt(page, 10) || 1);
         const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
@@ -199,7 +200,7 @@ const getLaporanPolisi = async (req, res) => {
         const { count, rows } = await LaporanPolisi.findAndCountAll({
             where,
             include: includes,
-            order: [["tanggal_laka", "DESC"]],
+            order: [[sort_by, sort_dir.toUpperCase() === "ASC" ? "ASC" : "DESC"]],
             limit: limitNum,
             offset,
             distinct: true,
@@ -1249,6 +1250,223 @@ const getStatistikKeterjaminan = async (req, res) => {
     }
 };
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REKAPITULASI CONTROLLER (appended)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function _createEmptyRekapRow(id, nama, wilayah) {
+  return {
+    id, nama, kode_loket: '', wilayah,
+    jumlah_lp: 0, terlambat_lapor: 0, jumlah_korban: 0, laka_tunggal: 0,
+    ll: 0, ll_md: 0, md: 0,
+    terjamin: 0, eg2r: 0, tidak_terjamin: 0,
+    kt_depan_depan: 0, kt_depan_samping: 0, kt_depan_belakang: 0,
+    kt_belakang_samping: 0, kt_samping_samping: 0, kt_beruntun: 0,
+    kt_ka: 0, kt_pjk: 0, kt_jatuh_sendiri: 0, kt_ka_pjk: 0,
+    pf_pelajar: 0, pf_karyawan: 0, pf_wiraswasta: 0, pf_pns: 0, pf_pedagang: 0,
+    pf_buruh: 0, pf_pensiunan: 0, pf_guru: 0, pf_petani: 0, pf_rumah_tangga: 0,
+    pf_tidak_bekerja: 0, pf_supir: 0, pf_lainnya: 0,
+    jk_a: 0, jk_b: 0, jk_c1: 0, jk_c2: 0, jk_dp: 0, jk_du: 0, jk_ep: 0, jk_eu: 0,
+    jk_f: 0, jk_ka: 0, jk_sepeda: 0, jk_pjk: 0, jk_tabrak_lari: 0,
+    telat_1_3: 0, telat_4_7: 0, telat_lebih_7: 0,
+  };
+}
+
+function _aggregateRekapRow(row, l) {
+  row.jumlah_lp += 1;
+  if (l.telat_lp > 0) row.terlambat_lapor += 1;
+  if (l.laka_tunggal) row.laka_tunggal += 1;
+  if (l.telat_lp >= 1 && l.telat_lp <= 3) row.telat_1_3 += 1;
+  else if (l.telat_lp >= 4 && l.telat_lp <= 7) row.telat_4_7 += 1;
+  else if (l.telat_lp > 7) row.telat_lebih_7 += 1;
+
+  const kt = (l.kasusTabrakKecelakaan && l.kasusTabrakKecelakaan.nama ? l.kasusTabrakKecelakaan.nama : '').toLowerCase();
+  if (kt.includes('depan - depan')) row.kt_depan_depan += 1;
+  else if (kt.includes('depan - samping')) row.kt_depan_samping += 1;
+  else if (kt.includes('depan - belakang')) row.kt_depan_belakang += 1;
+  else if (kt.includes('belakang - samping')) row.kt_belakang_samping += 1;
+  else if (kt.includes('samping - samping')) row.kt_samping_samping += 1;
+  else if (kt.includes('beruntun')) row.kt_beruntun += 1;
+  else if (kt.includes('kereta api') || kt.includes('dengan ka')) row.kt_ka += 1;
+  else if (kt.includes('menabrak pjk') || (kt.includes('pjk') && kt.includes('tabrak'))) row.kt_pjk += 1;
+  else if (kt.includes('jatuh sendiri')) row.kt_jatuh_sendiri += 1;
+  else if (kt.includes('ka - pjk') || kt.includes('ka pjk')) row.kt_ka_pjk += 1;
+
+  const korbanList = l.korban || [];
+  row.jumlah_korban += korbanList.length;
+
+  korbanList.forEach(k => {
+    const cname = ((k.cidera && k.cidera.nama) ? k.cidera.nama : '').toLowerCase();
+    if (cname === 'll' || cname === 'luka luka' || cname === 'luka ringan' || cname.includes('luka luka')) row.ll += 1;
+    else if (cname.includes('ll-md') || cname.includes('ll md') || cname.includes('luka luka') && cname.includes('meninggal')) row.ll_md += 1;
+    else if (cname === 'md' || cname.includes('meninggal')) row.md += 1;
+
+    const kname = ((k.keterjaminan && k.keterjaminan.nama) ? k.keterjaminan.nama : '').toLowerCase();
+    if (kname === 'eg2r' || kname.includes('eg2r')) row.eg2r += 1;
+    else if (kname.includes('tidak terjamin') || kname.includes('tidak')) row.tidak_terjamin += 1;
+    else if (kname.includes('terjamin')) row.terjamin += 1;
+
+    const pname = ((k.profesi && k.profesi.nama) ? k.profesi.nama : '').toLowerCase();
+    if (pname.includes('pelajar') || pname.includes('mahasiswa')) row.pf_pelajar += 1;
+    else if (pname.includes('karyawan') || pname.includes('swasta')) row.pf_karyawan += 1;
+    else if (pname.includes('wiraswasta') || pname.includes('wirausaha')) row.pf_wiraswasta += 1;
+    else if (pname.includes('pns') || pname.includes('bumn')) row.pf_pns += 1;
+    else if (pname.includes('pedagang')) row.pf_pedagang += 1;
+    else if (pname.includes('buruh')) row.pf_buruh += 1;
+    else if (pname.includes('pensiunan')) row.pf_pensiunan += 1;
+    else if (pname.includes('guru')) row.pf_guru += 1;
+    else if (pname.includes('petani') || pname.includes('pekebun')) row.pf_petani += 1;
+    else if (pname.includes('rumah tangga')) row.pf_rumah_tangga += 1;
+    else if (pname.includes('tidak bekerja')) row.pf_tidak_bekerja += 1;
+    else if (pname.includes('supir') || pname.includes('driver')) row.pf_supir += 1;
+    else row.pf_lainnya += 1;
+  });
+
+  const kendaraanList = (l.kendaraan || []).filter(k => k.peran === 'korban');
+  kendaraanList.forEach(k => {
+    const jkname = ((k.jenisKendaraan && k.jenisKendaraan.nama) ? k.jenisKendaraan.nama : '').trim().toUpperCase();
+    if (jkname === 'A') row.jk_a += 1;
+    else if (jkname === 'B') row.jk_b += 1;
+    else if (jkname === 'C1') row.jk_c1 += 1;
+    else if (jkname === 'C2') row.jk_c2 += 1;
+    else if (jkname === 'DP') row.jk_dp += 1;
+    else if (jkname === 'DU') row.jk_du += 1;
+    else if (jkname === 'EP') row.jk_ep += 1;
+    else if (jkname === 'EU') row.jk_eu += 1;
+    else if (jkname === 'F') row.jk_f += 1;
+    else if (jkname === 'KA' || jkname.includes('KERETA')) row.jk_ka += 1;
+    else if (jkname.includes('SEPEDA') && !jkname.includes('MOTOR')) row.jk_sepeda += 1;
+    else if (jkname.includes('PJK')) row.jk_pjk += 1;
+    else row.jk_tabrak_lari += 1;
+  });
+}
+
+const getRekapitulasiPolres = async (req, res) => {
+  try {
+    const { from, to, polres_id } = req.query;
+    const baseWhere = { is_active: true };
+    if (from) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.gte]: from };
+    if (to) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.lte]: to };
+    if (polres_id && polres_id !== 'ALL') baseWhere.polres_id = Number(polres_id);
+
+    let polresScope = { is_active: true };
+    if (req.user && req.user.role === 'user') polresScope.wilayah_id = req.user.wilayah_id;
+
+    const allPolres = await Polres.findAll({
+      where: polresScope,
+      include: [{ model: Wilayah, as: 'wilayah', attributes: ['id', 'nama'] }],
+      order: [['nama', 'ASC']],
+    });
+
+    const laporan = await LaporanPolisi.findAll({
+      where: baseWhere,
+      include: [
+        { model: Korban, as: 'korban', where: { is_active: true }, required: false,
+          include: [
+            { model: Cidera, as: 'cidera', attributes: ['id', 'nama'], required: false },
+            { model: Keterjaminan, as: 'keterjaminan', attributes: ['id', 'nama'], required: false },
+            { model: Profesi, as: 'profesi', attributes: ['id', 'nama'], required: false },
+          ]
+        },
+        { model: Kendaraan, as: 'kendaraan', where: { is_active: true }, required: false,
+          include: [{ model: JenisKendaraan, as: 'jenisKendaraan', attributes: ['id', 'nama'], required: false }]
+        },
+        { model: KasusTabrakKecelakaan, as: 'kasusTabrakKecelakaan', attributes: ['id', 'nama'], required: false },
+        { model: Polres, as: 'polres', attributes: ['id', 'nama', 'wilayah_id'], required: false,
+          include: [{ model: Wilayah, as: 'wilayah', attributes: ['id', 'nama'], required: false }]
+        },
+      ],
+    });
+
+    const polresMap = {};
+    allPolres.forEach(p => {
+      polresMap[p.id] = _createEmptyRekapRow(p.id, p.nama, p.wilayah ? p.wilayah.nama : '');
+    });
+
+    laporan.forEach(l => {
+      const pid = l.polres_id;
+      if (!polresMap[pid]) {
+        polresMap[pid] = _createEmptyRekapRow(pid, l.polres ? l.polres.nama : 'Polres #' + pid, l.polres && l.polres.wilayah ? l.polres.wilayah.nama : '');
+      }
+      _aggregateRekapRow(polresMap[pid], l);
+    });
+
+    const rows = Object.values(polresMap).sort((a, b) => a.nama.localeCompare(b.nama));
+    const totals = rows.reduce((acc, row) => {
+      Object.keys(row).forEach(k => {
+        if (typeof row[k] === 'number') acc[k] = (acc[k] || 0) + row[k];
+      });
+      return acc;
+    }, { id: 0, nama: 'TOTAL', kode_loket: '', wilayah: '' });
+
+    return successResponse(res, 200, 'Rekapitulasi per Polres berhasil diambil', { rows, totals });
+  } catch (err) {
+    logger.error('getRekapitulasiPolres error', err);
+    return errorResponse(res, 500, 'Gagal mengambil data rekapitulasi per Polres', err.message);
+  }
+};
+
+const getRekapitulasiLoket = async (req, res) => {
+  try {
+    const { from, to, polres_id } = req.query;
+    const baseWhere = { is_active: true };
+    if (from) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.gte]: from };
+    if (to) baseWhere.tanggal_laka = { ...baseWhere.tanggal_laka, [Op.lte]: to };
+    if (polres_id && polres_id !== 'ALL') baseWhere.polres_id = Number(polres_id);
+
+    let wilayahScope = { is_active: true };
+    if (req.user && req.user.role === 'user') wilayahScope.id = req.user.wilayah_id;
+
+    const allWilayah = await Wilayah.findAll({ where: wilayahScope, order: [['nama', 'ASC']] });
+
+    const laporan = await LaporanPolisi.findAll({
+      where: baseWhere,
+      include: [
+        { model: Korban, as: 'korban', where: { is_active: true }, required: false,
+          include: [
+            { model: Cidera, as: 'cidera', attributes: ['id', 'nama'], required: false },
+            { model: Keterjaminan, as: 'keterjaminan', attributes: ['id', 'nama'], required: false },
+            { model: Profesi, as: 'profesi', attributes: ['id', 'nama'], required: false },
+          ]
+        },
+        { model: Kendaraan, as: 'kendaraan', where: { is_active: true }, required: false,
+          include: [{ model: JenisKendaraan, as: 'jenisKendaraan', attributes: ['id', 'nama'], required: false }]
+        },
+        { model: KasusTabrakKecelakaan, as: 'kasusTabrakKecelakaan', attributes: ['id', 'nama'], required: false },
+        { model: Polres, as: 'polres', attributes: ['id', 'nama', 'wilayah_id'], required: false,
+          include: [{ model: Wilayah, as: 'wilayah', attributes: ['id', 'nama'], required: false }]
+        },
+      ],
+    });
+
+    const wilayahMap = {};
+    allWilayah.forEach(w => { wilayahMap[w.id] = _createEmptyRekapRow(w.id, w.nama, ''); });
+
+    laporan.forEach(l => {
+      const wid = l.polres ? l.polres.wilayah_id : null;
+      if (!wid) return;
+      if (!wilayahMap[wid]) {
+        wilayahMap[wid] = _createEmptyRekapRow(wid, l.polres && l.polres.wilayah ? l.polres.wilayah.nama : 'Loket #' + wid, '');
+      }
+      _aggregateRekapRow(wilayahMap[wid], l);
+    });
+
+    const rows = Object.values(wilayahMap).sort((a, b) => a.nama.localeCompare(b.nama));
+    const totals = rows.reduce((acc, row) => {
+      Object.keys(row).forEach(k => {
+        if (typeof row[k] === 'number') acc[k] = (acc[k] || 0) + row[k];
+      });
+      return acc;
+    }, { id: 0, nama: 'TOTAL', kode_loket: '', wilayah: '' });
+
+    return successResponse(res, 200, 'Rekapitulasi per Loket berhasil diambil', { rows, totals });
+  } catch (err) {
+    logger.error('getRekapitulasiLoket error', err);
+    return errorResponse(res, 500, 'Gagal mengambil data rekapitulasi per Loket', err.message);
+  }
+};
+
 module.exports = {
     getLaporanPolisi,
     getLaporanPolisiById,
@@ -1261,4 +1479,6 @@ module.exports = {
     getStatistikJenisLaka,
     getStatistikKorban,
     getStatistikKeterjaminan,
+    getRekapitulasiPolres,
+    getRekapitulasiLoket,
 };

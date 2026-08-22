@@ -11,7 +11,9 @@ const {
     getBreakdownTerlambat,
     getStatistikJenisLaka,
     getStatistikKorban,
-    getStatistikKeterjaminan
+    getStatistikKeterjaminan,
+    getRekapitulasiPolres,
+    getRekapitulasiLoket
 } = require("../controllers/laporanPolisi.controller");
 
 const {
@@ -835,6 +837,9 @@ router.get("/statistik/keterjaminan", verifyToken, getStatistikKeterjaminan);
  *       500:
  *         description: Failed to retrieve laporan polisi
  */
+router.get("/rekapitulasi/polres", verifyToken, getRekapitulasiPolres);
+router.get("/rekapitulasi/loket", verifyToken, getRekapitulasiLoket);
+
 router.get("/:id", verifyToken, getLaporanPolisiById);
 
 /**
