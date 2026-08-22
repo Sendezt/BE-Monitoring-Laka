@@ -12,22 +12,22 @@ const Kendaraan = sequelize.define(
 
         laporan_polisi_id: {
             type: DataTypes.INTEGER,
-            allowNull: false,
+            allowNull: true,
         },
 
         peran: {
             type: DataTypes.ENUM("korban", "penjamin"),
-            allowNull: false,
+            allowNull: true,
         },
 
         jenis_kendaraan_id: {
             type: DataTypes.INTEGER,
-            allowNull: false,
+            allowNull: true,
         },
 
         nopol: {
             type: DataTypes.STRING(20),
-            allowNull: false,
+            allowNull: true,
         },
 
         masa_laku_sw: {
