@@ -109,6 +109,12 @@ const getStorageInfo = () => {
 app.use(cors());
 app.use(express.json());
 
+app.disable("x-powered-by");
+app.use((req, res, next) => {
+  res.setHeader("X-Powered-By", "datalakajr-engginering");
+  next();
+});
+
 app.get("/", (req, res) => {
   const cpuInfo = getCpuInfo();
   const memoryInfo = getMemoryInfo();
