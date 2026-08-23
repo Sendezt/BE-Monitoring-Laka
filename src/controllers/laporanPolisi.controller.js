@@ -308,6 +308,23 @@ const createLaporanPolisi = async (req, res) => {
             );
         }
 
+        // ── Otorisasi scope wilayah (role user) ──────────────────────
+        // User (petugas) hanya boleh membuat laporan pada polres di wilayahnya
+        // sendiri. Admin bebas. Cegah pembuatan data lintas wilayah.
+        if (req.user?.role === "user") {
+            const polres = await Polres.findByPk(Number(polres_id), {
+                attributes: ["id", "wilayah_id"],
+            });
+            if (!polres || polres.wilayah_id !== req.user.wilayah_id) {
+                await t.rollback();
+                return errorResponse(
+                    res,
+                    403,
+                    "Anda hanya dapat membuat laporan untuk polres di wilayah Anda sendiri"
+                );
+            }
+        }
+
         // Hitung telat_lp otomatis dari selisih hari
         const diffMs = new Date(tanggal_lp) - new Date(tanggal_laka);
         const telat_lp = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
@@ -452,6 +469,22 @@ const updateLaporanPolisi = async (req, res) => {
         } = req.body;
 
         const dataLama = laporanPolisi.toJSON();
+
+        // Otorisasi: bila user (bukan admin) mengubah polres_id, polres baru
+        // harus tetap berada di wilayahnya sendiri (cegah pindah lintas wilayah).
+        if (req.user?.role === "user" && polres_id && Number(polres_id) !== laporanPolisi.polres_id) {
+            const polresBaru = await Polres.findByPk(Number(polres_id), {
+                attributes: ["id", "wilayah_id"],
+            });
+            if (!polresBaru || polresBaru.wilayah_id !== req.user.wilayah_id) {
+                await t.rollback();
+                return errorResponse(
+                    res,
+                    403,
+                    "Anda hanya dapat memindahkan laporan ke polres di wilayah Anda sendiri"
+                );
+            }
+        }
 
         // Hitung ulang telat_lp jika tanggal berubah
         const newTanggalLaka = tanggal_laka ?? laporanPolisi.tanggal_laka;
@@ -1481,4 +1514,8 @@ module.exports = {
     getStatistikKeterjaminan,
     getRekapitulasiPolres,
     getRekapitulasiLoket,
+    // Helper rekap diekspor agar dapat dipakai ulang oleh modul export (read-only).
+    _createEmptyRekapRow,
+    _aggregateRekapRow,
+    detailInclude,
 };

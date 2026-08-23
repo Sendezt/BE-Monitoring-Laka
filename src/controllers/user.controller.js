@@ -108,6 +108,19 @@ const createUser = async (req, res) => {
       );
     }
 
+    // Otorisasi: hanya superadmin (admin wilayah_id null) yang boleh membuat
+    // akun ber-role admin. Admin wilayah hanya boleh membuat akun user.
+    const isSuperadmin =
+      req.user?.role === "admin" &&
+      (req.user?.wilayah_id === null || req.user?.wilayah_id === undefined);
+    if (role === "admin" && !isSuperadmin) {
+      return errorResponse(
+        res,
+        403,
+        "Hanya superadmin yang dapat membuat akun admin",
+      );
+    }
+
     // Check username
     const existingUser = await User.findOne({
       where: { username },

@@ -34,6 +34,7 @@ const korbanRoutes = require("./routes/korban.route");
 const activityLogRoutes = require("./routes/activityLog.route");
 const chartRoutes = require("./routes/chart.route");
 const migrasiRoutes = require("./routes/migrasi.route");
+const exportRoutes = require("./routes/export.route");
 
 
 const app = express();
@@ -235,6 +236,7 @@ app.use("/api/korban", korbanRoutes);
 app.use("/api/activity-log", activityLogRoutes);
 app.use("/api/chart", chartRoutes);
 app.use("/api/migrasi", migrasiRoutes);
+app.use("/api/export", exportRoutes);
 
 const PORT = process.env.PORT;
 

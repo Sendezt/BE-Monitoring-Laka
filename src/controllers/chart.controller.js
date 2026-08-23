@@ -800,6 +800,59 @@ const getTop20KecamatanLaka = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────
+// GET /api/chart/statistik/top-10-polres-laka
+// Query params: from, to, polres_id
+// Returns: 10 polres dengan total laporan polisi terbanyak (agregasi di DB)
+// ─────────────────────────────────────────────────────────────
+const getTop10PolresLaka = async (req, res) => {
+    try {
+        const { from, to, polres_id } = req.query;
+
+        const whereLaporan = { is_active: true };
+        if (from) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.gte]: from };
+        if (to) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.lte]: to };
+        if (polres_id && polres_id !== "ALL") {
+            whereLaporan.polres_id = Number(polres_id);
+        }
+
+        // Include Polres, dengan optional scope wilayah untuk role user
+        const includePolres = {
+            model: Polres,
+            as: "polres",
+            attributes: ["id", "nama"],
+            required: true,
+        };
+        if (req.user?.role === "user") {
+            includePolres.where = { wilayah_id: req.user.wilayah_id };
+        }
+
+        const result = await LaporanPolisi.findAll({
+            attributes: [
+                "polres_id",
+                [sequelize.fn("COUNT", sequelize.col("LaporanPolisi.id")), "total_laka"],
+            ],
+            where: whereLaporan,
+            include: [includePolres],
+            group: ["LaporanPolisi.polres_id", "polres.id", "polres.nama"],
+            order: [[sequelize.literal("total_laka"), "DESC"]],
+            limit: 10,
+            raw: true,
+        });
+
+        const data = result.map((row) => ({
+            polres_id: row.polres_id,
+            nama_polres: row["polres.nama"] || row.nama,
+            total_laka: parseInt(row.total_laka, 10) || 0,
+        }));
+
+        return successResponse(res, 200, "Top 10 polres laka retrieved successfully", data);
+    } catch (error) {
+        logger.error("Get top 10 polres laka error", error);
+        return errorResponse(res, 500, "Failed to retrieve top 10 polres laka");
+    }
+};
+
+// ─────────────────────────────────────────────────────────────
 // GET /api/laporan-polisi/statistik/top-15-rumah-sakit-korban
 // Query params: from, to, polres_id, kecamatan_id
 // Returns: 15 rumah sakit dengan total korban terbanyak
@@ -1080,6 +1133,65 @@ const getTrendHarianLPKorban = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────
+// GET /api/chart/statistik/tren-bulanan
+// Query params: from, to, polres_id
+// Returns: jumlah LP per bulan (agregasi DB) untuk N bulan.
+// Dipakai bar chart "Tren Laporan per Bulan" di dashboard.
+// ─────────────────────────────────────────────────────────────
+const getTrenBulanan = async (req, res) => {
+    try {
+        const { from, to, polres_id } = req.query;
+
+        const where = { is_active: true };
+        if (from) where.tanggal_lp = { ...where.tanggal_lp, [Op.gte]: from };
+        if (to) where.tanggal_lp = { ...where.tanggal_lp, [Op.lte]: to };
+        if (polres_id && polres_id !== "ALL") {
+            where.polres_id = Number(polres_id);
+        }
+
+        const include = [];
+        if (req.user?.role === "user") {
+            include.push({
+                model: Polres,
+                as: "polres",
+                attributes: [],
+                where: { wilayah_id: req.user.wilayah_id },
+                required: true,
+            });
+        }
+
+        // Agregasi per bulan (YYYY-MM) berdasarkan tanggal_lp
+        const bulanExpr = sequelize.fn(
+            "DATE_FORMAT",
+            sequelize.col("LaporanPolisi.tanggal_lp"),
+            "%Y-%m"
+        );
+
+        const rows = await LaporanPolisi.findAll({
+            attributes: [
+                [bulanExpr, "bulan"],
+                [sequelize.fn("COUNT", sequelize.col("LaporanPolisi.id")), "total_lp"],
+            ],
+            where,
+            include,
+            group: [bulanExpr],
+            order: [[bulanExpr, "ASC"]],
+            raw: true,
+        });
+
+        const data = rows.map((row) => ({
+            bulan: row.bulan, // "YYYY-MM"
+            total_lp: parseInt(row.total_lp, 10) || 0,
+        }));
+
+        return successResponse(res, 200, "Tren bulanan retrieved successfully", data);
+    } catch (error) {
+        logger.error("Get tren bulanan error", error);
+        return errorResponse(res, 500, "Failed to retrieve tren bulanan");
+    }
+};
+
+// ─────────────────────────────────────────────────────────────
 // GET /api/laporan-polisi/statistik/hari-kejadian
 // Query params: from, to, polres_id, kecamatan_id
 // Returns: total laporan berdasarkan hari kejadian
@@ -1217,6 +1329,8 @@ module.exports = {
     getStatistikKorbanByProfesi,
     getStatistikKorbanByJenisKendaraan,
     getTop20KecamatanLaka,
+    getTop10PolresLaka,
+    getTrenBulanan,
     getTop15RumahSakitKorban,
     getTrendHarianLPKorban,
     getStatistikHariKejadian,

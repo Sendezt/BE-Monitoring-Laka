@@ -9,6 +9,8 @@ const {
     getStatistikKorbanByProfesi,
     getStatistikKorbanByJenisKendaraan,
     getTop20KecamatanLaka,
+    getTop10PolresLaka,
+    getTrenBulanan,
     getTop15RumahSakitKorban,
     getTrendHarianLPKorban,
     getStatistikHariKejadian,
@@ -626,6 +628,64 @@ router.get(
     "/statistik/top-20-kecamatan-laka",
     verifyToken,
     getTop20KecamatanLaka
+);
+
+/**
+ * @swagger
+ * /api/chart/statistik/top-10-polres-laka:
+ *   get:
+ *     summary: 10 Polres dengan jumlah laka (LP) tertinggi
+ *     description: Agregasi jumlah laporan polisi per polres, diurutkan menurun, dibatasi 10. Filter tanggal by tanggal_lp. Pegawai hanya wilayahnya.
+ *     tags: [Chart]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         schema: { type: string, format: date }
+ *       - in: query
+ *         name: to
+ *         schema: { type: string, format: date }
+ *       - in: query
+ *         name: polres_id
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Top 10 polres laka retrieved successfully
+ */
+router.get(
+    "/statistik/top-10-polres-laka",
+    verifyToken,
+    getTop10PolresLaka
+);
+
+/**
+ * @swagger
+ * /api/chart/statistik/tren-bulanan:
+ *   get:
+ *     summary: Tren jumlah LP per bulan (agregasi DB)
+ *     description: Jumlah laporan polisi dikelompokkan per bulan (YYYY-MM) berdasarkan tanggal_lp. Filter opsional from, to, polres_id. Pegawai hanya wilayahnya.
+ *     tags: [Chart]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         schema: { type: string, format: date }
+ *       - in: query
+ *         name: to
+ *         schema: { type: string, format: date }
+ *       - in: query
+ *         name: polres_id
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Tren bulanan retrieved successfully
+ */
+router.get(
+    "/statistik/tren-bulanan",
+    verifyToken,
+    getTrenBulanan
 );
 
 /**
