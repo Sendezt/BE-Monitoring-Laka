@@ -207,7 +207,6 @@ const exportLaporanPolisi = async (req, res) => {
                 { model: Polres, as: "polres", attributes: ["id", "nama"] },
                 includeKecamatan,
                 { model: Kelurahan, as: "kelurahan", attributes: ["id", "nama"] },
-                { model: RumahSakit, as: "rumahSakit", attributes: ["id", "nama"] },
                 { model: SifatLaka, as: "sifatLaka", attributes: ["id", "nama"] },
                 { model: KasusTabrakKecelakaan, as: "kasusTabrakKecelakaan", attributes: ["id", "nama"] },
                 { model: FaktorPenyebabLaka, as: "faktorPenyebabLaka", attributes: ["id", "nama"] },
@@ -218,11 +217,12 @@ const exportLaporanPolisi = async (req, res) => {
                 },
                 {
                     model: Korban, as: "korban", where: { is_active: true }, required: false,
-                    attributes: ["id", "nama", "usia", "profesi_id", "cidera_id", "keterjaminan_id"],
+                    attributes: ["id", "nama", "usia", "profesi_id", "cidera_id", "keterjaminan_id", "rumah_sakit_id", "rumah_sakit_wilayah"],
                     include: [
                         { model: Profesi, as: "profesi", attributes: ["nama"] },
                         { model: Cidera, as: "cidera", attributes: ["nama"] },
                         { model: Keterjaminan, as: "keterjaminan", attributes: ["nama"] },
+                        { model: RumahSakit, as: "rumahSakit", attributes: ["nama"] },
                     ],
                 },
             ],
@@ -262,6 +262,7 @@ const exportLaporanPolisi = async (req, res) => {
         // Data
         laporan.forEach((l, idx) => {
             const namaKorban = (l.korban || []).map((k) => k.nama).filter(Boolean).join("; ");
+            const namaRs = (l.korban || []).map((k) => k.rumahSakit?.nama || k.rumah_sakit_wilayah).filter(Boolean).join("; ");
             const r = ws.addRow([
                 idx + 1,
                 l.no_lp || "-",
@@ -273,7 +274,7 @@ const exportLaporanPolisi = async (req, res) => {
                 l.kecamatan?.nama || "-",
                 l.kelurahan?.nama || "-",
                 l.lokasi_laka || "-",
-                l.rumahSakit?.nama || l.rumah_sakit_wilayah || "-",
+                namaRs || "-",
                 l.laka_tunggal ? "Ya" : "Tidak",
                 l.kasusTabrakKecelakaan?.nama || "-",
                 l.faktorPenyebabLaka?.nama || "-",

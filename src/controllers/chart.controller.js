@@ -861,10 +861,9 @@ const getTop15RumahSakitKorban = async (req, res) => {
     try {
         const { from, to, polres_id, kecamatan_id } = req.query;
 
-        // Base filter untuk LaporanPolisi (hanya yang memiliki rumah_sakit_id)
+        // Base filter untuk LaporanPolisi
         const whereLaporan = {
             is_active: true,
-            rumah_sakit_id: { [Op.ne]: null },
         };
 
         if (from) whereLaporan.tanggal_lp = { ...whereLaporan.tanggal_lp, [Op.gte]: from };
@@ -895,12 +894,15 @@ const getTop15RumahSakitKorban = async (req, res) => {
         // 1. Agregasi total korban per rumah_sakit_id
         const result = await Korban.findAll({
             attributes: [
-                [sequelize.col("laporanPolisi.rumah_sakit_id"), "rumah_sakit_id"],
+                "rumah_sakit_id",
                 [sequelize.fn("COUNT", sequelize.col("Korban.id")), "total_korban"],
             ],
-            where: { is_active: true },
+            where: { 
+                is_active: true,
+                rumah_sakit_id: { [Op.ne]: null },
+            },
             include: [includeLaporan],
-            group: ["laporanPolisi.rumah_sakit_id"],
+            group: ["Korban.rumah_sakit_id"],
             order: [[sequelize.literal("total_korban"), "DESC"]],
             limit: 15,
             raw: true,

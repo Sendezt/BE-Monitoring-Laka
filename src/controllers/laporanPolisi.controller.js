@@ -80,11 +80,6 @@ const detailInclude = [
         as: "kelurahan",
         attributes: ["id", "nama"],
     },
-    {
-        model: RumahSakit,
-        as: "rumahSakit",
-        attributes: ["id", "nama"],
-    },
 
     {
         model: SifatLaka,
@@ -120,7 +115,7 @@ const detailInclude = [
         as: "korban",
         where: { is_active: true },
         required: false,
-        attributes: ["id", "nama", "usia", "kendaraan_id", "profesi_id", "cidera_id", "tindak_lanjut_id", "jenis_jaminan_id", "keterjaminan_id"],
+        attributes: ["id", "nama", "usia", "kendaraan_id", "profesi_id", "cidera_id", "tindak_lanjut_id", "jenis_jaminan_id", "keterjaminan_id", "rumah_sakit_id", "rumah_sakit_wilayah"],
         include: [
             {
                 model: Profesi,
@@ -145,6 +140,11 @@ const detailInclude = [
             {
                 model: Keterjaminan,
                 as: "keterjaminan",
+                attributes: ["id", "nama"],
+            },
+            {
+                model: RumahSakit,
+                as: "rumahSakit",
                 attributes: ["id", "nama"],
             },
         ],
@@ -278,8 +278,6 @@ const createLaporanPolisi = async (req, res) => {
             kecamatan_id,
             kelurahan_id,
             lokasi_laka,
-            rumah_sakit_id,
-            rumah_sakit_wilayah,
             laka_tunggal,
             kasus_tabrak_kecelakaan_id,
             faktor_penyebab_laka_id,
@@ -341,8 +339,6 @@ const createLaporanPolisi = async (req, res) => {
                 kecamatan_id: Number(kecamatan_id),
                 kelurahan_id: Number(kelurahan_id),
                 lokasi_laka: String(lokasi_laka).trim(),
-                rumah_sakit_id: rumah_sakit_id ? Number(rumah_sakit_id) : null,
-                rumah_sakit_wilayah: rumah_sakit_wilayah ?? null,
                 laka_tunggal: laka_tunggal ?? false,
                 kasus_tabrak_kecelakaan_id: kasus_tabrak_kecelakaan_id ? Number(kasus_tabrak_kecelakaan_id) : null,
                 faktor_penyebab_laka_id: faktor_penyebab_laka_id ? Number(faktor_penyebab_laka_id) : null,
@@ -391,6 +387,8 @@ const createLaporanPolisi = async (req, res) => {
                     tindak_lanjut_id: krb.tindak_lanjut_id ? Number(krb.tindak_lanjut_id) : null,
                     jenis_jaminan_id: krb.jenis_jaminan_id ? Number(krb.jenis_jaminan_id) : null,
                     keterjaminan_id: krb.keterjaminan_id ? Number(krb.keterjaminan_id) : null,
+                    rumah_sakit_id: krb.rumah_sakit_id ? Number(krb.rumah_sakit_id) : null,
+                    rumah_sakit_wilayah: krb.rumah_sakit_wilayah ?? null,
                     is_active: true,
                 },
                 { transaction: t }
@@ -461,7 +459,7 @@ const updateLaporanPolisi = async (req, res) => {
         const {
             no_lp, polres_id, tanggal_laka, hari_kejadian, tanggal_lp,
             kecamatan_id, kelurahan_id, lokasi_laka,
-            rumah_sakit_id, rumah_sakit_wilayah, laka_tunggal,
+            laka_tunggal,
             kasus_tabrak_kecelakaan_id, faktor_penyebab_laka_id,
             sifat_laka_id, keterangan,
             kendaraan: kendaraanPayload,
@@ -503,8 +501,6 @@ const updateLaporanPolisi = async (req, res) => {
                 kecamatan_id: kecamatan_id ? Number(kecamatan_id) : laporanPolisi.kecamatan_id,
                 kelurahan_id: kelurahan_id ? Number(kelurahan_id) : laporanPolisi.kelurahan_id,
                 lokasi_laka: lokasi_laka ? String(lokasi_laka).trim() : laporanPolisi.lokasi_laka,
-                rumah_sakit_id: rumah_sakit_id !== undefined ? (rumah_sakit_id ? Number(rumah_sakit_id) : null) : laporanPolisi.rumah_sakit_id,
-                rumah_sakit_wilayah: rumah_sakit_wilayah !== undefined ? rumah_sakit_wilayah : laporanPolisi.rumah_sakit_wilayah,
                 laka_tunggal: laka_tunggal ?? laporanPolisi.laka_tunggal,
                 kasus_tabrak_kecelakaan_id: kasus_tabrak_kecelakaan_id !== undefined ? (kasus_tabrak_kecelakaan_id ? Number(kasus_tabrak_kecelakaan_id) : null) : laporanPolisi.kasus_tabrak_kecelakaan_id,
                 faktor_penyebab_laka_id: faktor_penyebab_laka_id !== undefined ? (faktor_penyebab_laka_id ? Number(faktor_penyebab_laka_id) : null) : laporanPolisi.faktor_penyebab_laka_id,
@@ -571,6 +567,8 @@ const updateLaporanPolisi = async (req, res) => {
                         tindak_lanjut_id: krb.tindak_lanjut_id ? Number(krb.tindak_lanjut_id) : null,
                         jenis_jaminan_id: krb.jenis_jaminan_id ? Number(krb.jenis_jaminan_id) : null,
                         keterjaminan_id: krb.keterjaminan_id ? Number(krb.keterjaminan_id) : null,
+                        rumah_sakit_id: krb.rumah_sakit_id ? Number(krb.rumah_sakit_id) : null,
+                        rumah_sakit_wilayah: krb.rumah_sakit_wilayah ?? null,
                         is_active: true,
                     },
                     { transaction: t }

@@ -275,12 +275,7 @@ function mapGroupToPayload(group, master, forcedPolresId = null) {
     const rumahSakitPool = forcedWilayahId
         ? master.rumahSakit.filter((rs) => rs.wilayah_id === forcedWilayahId)
         : master.rumahSakit;
-    let rumahSakitId = lookupId(rumahSakitPool, laporan.rs_sendiri);
-    // Fallback: kalau tidak ketemu dalam wilayah, cari ke seluruh RS
-    if (!rumahSakitId && forcedWilayahId && laporan.rs_sendiri) {
-        rumahSakitId = lookupId(master.rumahSakit, laporan.rs_sendiri);
-    }
-    if (!rumahSakitId && laporan.rs_sendiri) issues.push({ field: "rumah_sakit", value: laporan.rs_sendiri });
+
 
     // Polres: prioritas polres yang dipaksa dari pilihan sheet (1 sheet = 1 polres).
     // Jika tidak dipaksa, ambil dari kecamatan yang termatch.
@@ -316,9 +311,16 @@ function mapGroupToPayload(group, master, forcedPolresId = null) {
         kecamatan_id: kecamatanId,
         kelurahan_id: kelurahanId,
         lokasi_laka: laporan.lokasi_laka || "",
-        rumah_sakit_id: rumahSakitId,
-        rumah_sakit_wilayah: laporan.rs_lain || null,
-        laka_tunggal: laporan.laka_tunggal === "TRUE" || laporan.laka_tunggal === "true",
+        // laka_tunggal = true jika kolom boolean di sheet TRUE,
+        // ATAU jika ada korban yang tindak_lanjutnya "Laka Tunggal"
+        // (menangani inkonsistensi sheet: kolom boolean sering dikosongkan/FALSE
+        //  padahal tindak lanjut korban sudah ditulis "Laka Tunggal")
+        laka_tunggal:
+            laporan.laka_tunggal === "TRUE" ||
+            laporan.laka_tunggal === "true" ||
+            group.korban.some((k) =>
+                (k.tindak_lanjut || "").toString().toLowerCase().trim() === "laka tunggal"
+            ),
         kasus_tabrak_kecelakaan_id: kasusTabrakId,
         faktor_penyebab_laka_id: faktorPenyebabId,
         sifat_laka_id: sifatLakaId,
@@ -352,6 +354,15 @@ function mapGroupToPayload(group, master, forcedPolresId = null) {
             const tindakLanjutId = lookupId(master.tindakLanjut, k.tindak_lanjut);
             const jenisJaminanId = lookupId(master.jenisJaminan, k.jenis_jaminan);
             const keterjaminanId = lookupId(master.keterjaminan, k.keterjaminan);
+
+            let rumahSakitId = lookupId(rumahSakitPool, k.rs_sendiri);
+            if (!rumahSakitId && forcedWilayahId && k.rs_sendiri) {
+                rumahSakitId = lookupId(master.rumahSakit, k.rs_sendiri);
+            }
+            if (!rumahSakitId && k.rs_sendiri) {
+                issues.push({ field: "rumah_sakit", value: k.rs_sendiri });
+            }
+
             return {
                 nama: k.nama,
                 usia: parseInt(k.usia) || null,
@@ -366,6 +377,9 @@ function mapGroupToPayload(group, master, forcedPolresId = null) {
                 jenis_jaminan_nama: nameById(master.jenisJaminan, jenisJaminanId),
                 keterjaminan_id: keterjaminanId,
                 keterjaminan_nama: nameById(master.keterjaminan, keterjaminanId),
+                rumah_sakit_id: rumahSakitId,
+                rumah_sakit_nama: nameById(master.rumahSakit, rumahSakitId),
+                rumah_sakit_wilayah: k.rs_lain || null,
             };
         }),
     };
@@ -376,7 +390,7 @@ function mapGroupToPayload(group, master, forcedPolresId = null) {
         kecamatan: kecamatanMatch ? kecamatanMatch.nama : null,
         kelurahan: kelurahanMatch ? kelurahanMatch.nama : null,
         kelurahan_from_lokasi: kelurahanFromLokasi,
-        rumah_sakit: nameById(master.rumahSakit, rumahSakitId),
+        rumah_sakit: payload.korban.map((kb) => kb.rumah_sakit_nama || kb.rumah_sakit_wilayah).filter(Boolean).join("; ") || null,
         kasus_tabrak_kecelakaan: nameById(master.kasusTabrak, kasusTabrakId),
         faktor_penyebab_laka: nameById(master.faktorPenyebab, faktorPenyebabId),
         sifat_laka: nameById(master.sifatLaka, sifatLakaId),
@@ -427,8 +441,6 @@ async function insertLaporanPayload(payload, req) {
                 kecamatan_id: Number(payload.kecamatan_id),
                 kelurahan_id: Number(payload.kelurahan_id),
                 lokasi_laka: cut(payload.lokasi_laka, 255) || null,
-                rumah_sakit_id: payload.rumah_sakit_id ? Number(payload.rumah_sakit_id) : null,
-                rumah_sakit_wilayah: cut(payload.rumah_sakit_wilayah, 150) ?? null,
                 laka_tunggal: payload.laka_tunggal ?? false,
                 kasus_tabrak_kecelakaan_id: payload.kasus_tabrak_kecelakaan_id
                     ? Number(payload.kasus_tabrak_kecelakaan_id) : null,
@@ -484,6 +496,8 @@ async function insertLaporanPayload(payload, req) {
                     tindak_lanjut_id: krb.tindak_lanjut_id ? Number(krb.tindak_lanjut_id) : null,
                     jenis_jaminan_id: krb.jenis_jaminan_id ? Number(krb.jenis_jaminan_id) : null,
                     keterjaminan_id: krb.keterjaminan_id ? Number(krb.keterjaminan_id) : null,
+                    rumah_sakit_id: krb.rumah_sakit_id ? Number(krb.rumah_sakit_id) : null,
+                    rumah_sakit_wilayah: cut(krb.rumah_sakit_wilayah, 150) ?? null,
                     is_active: true,
                 },
                 { transaction: t }
@@ -779,7 +793,7 @@ const importRow = async (req, res) => {
             ["kecamatan_id",   payload.kecamatan_id],
             ["kelurahan_id",   payload.kelurahan_id],
             ["laka_tunggal",   String(payload.laka_tunggal) + " (" + typeof payload.laka_tunggal + ")"],
-            ["rumah_sakit_id", payload.rumah_sakit_id],
+            ["rumah_sakit",    payload.korban ? payload.korban.map(k => k.rumah_sakit_nama || k.rumah_sakit_wilayah).filter(Boolean).join("; ") : "-"],
             ["jumlah korban",  Array.isArray(payload.korban) ? payload.korban.length : 0],
             ["jumlah kendaraan", Array.isArray(payload.kendaraan) ? payload.kendaraan.length : 0],
         ]);

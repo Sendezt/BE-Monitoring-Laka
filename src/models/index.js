@@ -121,13 +121,13 @@ LaporanPolisi.belongsTo(Kelurahan, {
   as: "kelurahan",
 });
 
-// Rumah Sakit -> LaporanPolisi
-RumahSakit.hasMany(LaporanPolisi, {
+// Rumah Sakit -> Korban
+RumahSakit.hasMany(Korban, {
   foreignKey: "rumah_sakit_id",
-  as: "laporanPolisi",
+  as: "korban",
 });
 
-LaporanPolisi.belongsTo(RumahSakit, {
+Korban.belongsTo(RumahSakit, {
   foreignKey: "rumah_sakit_id",
   as: "rumahSakit",
 });

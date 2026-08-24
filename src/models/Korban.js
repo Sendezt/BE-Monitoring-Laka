@@ -55,6 +55,16 @@ const Korban = sequelize.define(
             allowNull: true,
         },
 
+        rumah_sakit_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+        },
+
+        rumah_sakit_wilayah: {
+            type: DataTypes.STRING(150),
+            allowNull: true,
+        },
+
         is_active: {
             type: DataTypes.BOOLEAN,
             allowNull: false,
