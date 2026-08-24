@@ -7,6 +7,7 @@ const os = require("os");
 const fs = require("fs");
 
 const logger = require("./utils/logger");
+const requestLogger = require("./middlewares/logging.middleware");
 const swaggerSpecs = require("./config/swagger");
 const sequelize = require("./config/database");
 // const User = require("./models/User");
@@ -107,6 +108,7 @@ const getStorageInfo = () => {
 };
 
 app.use(cors());
+app.use(requestLogger);
 app.use(express.json());
 
 app.disable("x-powered-by");

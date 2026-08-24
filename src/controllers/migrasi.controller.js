@@ -531,32 +531,55 @@ const getSheetData = async (req, res) => {
         const startRow = parseInt(req.query.startRow, 10) || 6;
         const endRow = parseInt(req.query.endRow, 10) || 50;
 
-        logger.progress("MIGRASI", `Mulai baca Sheet "${sheetName}" baris ${startRow}-${endRow}`);
+        // ════════════════════════════════════════════════════════════
+        logger.section(`MIGRASI getSheetData — Sheet: "${sheetName}"  Baris: ${startRow}-${endRow}`);
 
+        // ── Tahap 1: Baca data ───────────────────────────────────────
+        logger.sub("Tahap 1: Baca sheet & master data");
         const [master, rows, topBlock] = await Promise.all([
             loadMasterData(),
             fetchSheetRows(sheetName, startRow, endRow),
             fetchTopBlock(sheetName, 1, 8).catch(() => []),
         ]);
-        logger.progress("MIGRASI", `Master data dimuat & ${rows ? rows.length : 0} baris ditarik dari Google Sheets`);
+        logger.table([
+            ["Sheet",           sheetName],
+            ["Rentang baris",   `${startRow} – ${endRow}`],
+            ["Baris raw diambil", rows ? rows.length : 0],
+            ["Master polres",   master.polres.length],
+            ["Master kecamatan", master.kecamatan.length],
+            ["Master kelurahan", master.kelurahan.length],
+        ]);
 
         if (!rows || rows.length === 0) {
-            logger.progress("MIGRASI", `Sheet "${sheetName}" kosong pada rentang baris ini`);
+            logger.warn(`Sheet "${sheetName}" kosong pada rentang baris ${startRow}-${endRow}`);
             return successResponse(res, 200, "Tidak ada data pada sheet ini", {
                 sheet: sheetName,
                 rows: [],
             });
         }
 
-        // Deteksi mapping kolom dari header (menangani sheet yang kolomnya bergeser
-        // maupun posisi baris header yang berbeda). Bila gagal → mapping statis default.
+        // ── Tahap 2: Parsing & grouping ──────────────────────────────
+        logger.sub("Tahap 2: Deteksi kolom, parsing baris, grouping per No LP");
         const dynamicMapping = detectColumnMapping(topBlock);
-        logger.progress("MIGRASI", `Deteksi kolom: ${dynamicMapping ? "DINAMIS (dari header)" : "STATIS (default)"}`);
+        const mappingMode = dynamicMapping ? "DINAMIS (dari header sheet)" : "STATIS (posisi kolom default)";
+        logger.progress("MIGRASI", `Mode mapping kolom : ${mappingMode}`);
+
         const parsed = parseRows(rows, startRow, dynamicMapping || undefined);
         const grouped = groupByLp(parsed);
-        logger.progress("MIGRASI", `Parsing selesai: ${parsed.length} baris data → ${Object.keys(grouped).length} No LP (grouped)`);
+        const totalGrouped = Object.keys(grouped).length;
 
-        // ── Deteksi polres otomatis (1 sheet = 1 polres) ──────────────
+        logger.table([
+            ["Baris setelah parse", parsed.length],
+            ["No LP unik (grouped)", totalGrouped],
+        ]);
+
+        // ── DIAGNOSTIK: distribusi laka_tunggal raw ──────────────────
+        logger.sub("Diagnostik: laka_tunggal (nilai raw dari sheet)");
+        logger.lakaTunggalSummary("MIGRASI", grouped);
+
+        // ── Tahap 3: Deteksi polres sheet ───────────────────────────
+        logger.separator();
+        logger.sub("Tahap 3: Deteksi polres sheet");
         const { polresId: sheetPolresId, source: polresSource } =
             detectSheetPolres(topBlock, grouped, master);
         const sheetPolresNama = sheetPolresId
@@ -565,14 +588,20 @@ const getSheetData = async (req, res) => {
         const sheetWilayahId = sheetPolresId
             ? (master.polres.find((p) => p.id === sheetPolresId)?.wilayah_id || null)
             : null;
-        logger.progress(
-            "MIGRASI",
-            `Polres sheet: ${sheetPolresNama ? `${sheetPolresNama} (id ${sheetPolresId})` : "TIDAK TERDETEKSI"} — sumber: ${polresSource}`
-        );
 
-        // No LP yang sudah ada di DB — cek duplikat berbasis (no_lp + polres_id).
-        // No LP yang sama boleh ada di polres berbeda; yang dilarang hanya
-        // kombinasi no_lp + polres_id yang sama persis.
+        logger.table([
+            ["Polres terdeteksi", sheetPolresNama || "TIDAK TERDETEKSI"],
+            ["Polres ID",         sheetPolresId   || "-"],
+            ["Wilayah ID",        sheetWilayahId  || "-"],
+            ["Sumber deteksi",    polresSource],
+        ]);
+        if (!sheetPolresId) {
+            logger.warn("Polres tidak terdeteksi — mapping polres per-LP akan dicoba via kecamatan");
+        }
+
+        // ── Tahap 4: Cek duplikat No LP di DB ───────────────────────
+        logger.separator();
+        logger.sub("Tahap 4: Cek duplikat No LP di DB");
         const noLpList = Object.keys(grouped);
         const existing = await LaporanPolisi.findAll({
             where: { no_lp: noLpList, is_active: true },
@@ -580,18 +609,25 @@ const getSheetData = async (req, res) => {
             raw: true,
         });
         const existingSet = new Set(existing.map((e) => `${e.no_lp}|${e.polres_id}`));
+        logger.progress("MIGRASI", `Ditemukan ${existing.length} No LP yang sudah ada di DB (kombinasi no_lp+polres_id)`);
 
-        // Urutkan sesuai urutan fisik baris di sheet (No LP pertama muncul = tampil pertama)
+        // ── Tahap 5: Mapping payload + validasi ──────────────────────
+        logger.separator();
+        logger.sub("Tahap 5: Mapping payload & validasi master");
+
         const sortedKeys = noLpList.sort(
             (a, b) => (grouped[a].laporan._baris || 0) - (grouped[b].laporan._baris || 0)
         );
 
         let cValid = 0, cInvalid = 0, cDup = 0;
+        // Kumpulkan semua issue per field untuk summary akhir
+        const issueFieldCount = {};
+        const missingFieldCount = {};
+
         const resultRows = sortedKeys.map((noLp) => {
             const group = grouped[noLp];
             const { payload, issues } = mapGroupToPayload(group, master, sheetPolresId);
             const missing = getMissingFields(payload);
-            // Duplikat hanya jika polres_id termapping DAN kombinasi sudah ada
             const duplicate =
                 payload.polres_id != null &&
                 existingSet.has(`${noLp}|${payload.polres_id}`);
@@ -603,6 +639,14 @@ const getSheetData = async (req, res) => {
             if (status === "VALID") cValid++;
             else if (status === "DUPLICATE") cDup++;
             else cInvalid++;
+
+            // Kumpulkan statistik issue
+            for (const iss of issues) {
+                issueFieldCount[iss.field] = (issueFieldCount[iss.field] || 0) + 1;
+            }
+            for (const mf of missing) {
+                missingFieldCount[mf] = (missingFieldCount[mf] || 0) + 1;
+            }
 
             return {
                 no_lp: noLp,
@@ -616,7 +660,35 @@ const getSheetData = async (req, res) => {
             };
         });
 
-        logger.progress("MIGRASI", `Validasi selesai — Siap:${cValid} | TidakCocok:${cInvalid} | Duplikat:${cDup}. Mengirim ke UI.`);
+        // ── DIAGNOSTIK: laka_tunggal setelah mapping ke boolean ──────
+        logger.sub("Diagnostik: laka_tunggal (setelah konversi payload → boolean)");
+        logger.lakaTunggalPayloadSummary("MIGRASI", resultRows.map((r) => r.payload));
+
+        // ── Tahap 6: Summary akhir ───────────────────────────────────
+        logger.separator();
+        logger.sub("Tahap 6: Summary akhir");
+        logger.table([
+            ["Total No LP",  totalGrouped],
+            ["VALID",        cValid],
+            ["INVALID_MASTER", cInvalid],
+            ["DUPLICATE",    cDup],
+        ]);
+
+        if (Object.keys(missingFieldCount).length > 0) {
+            logger.progress("MIGRASI", "Field wajib yang kosong (jumlah LP terpengaruh):");
+            for (const [field, count] of Object.entries(missingFieldCount).sort((a, b) => b[1] - a[1])) {
+                logger.progress("MIGRASI", `  ${String(count).padStart(4)}x  missing: ${field}`);
+            }
+        }
+
+        if (Object.keys(issueFieldCount).length > 0) {
+            logger.progress("MIGRASI", "Field dengan mapping tidak cocok ke master (jumlah LP terpengaruh):");
+            for (const [field, count] of Object.entries(issueFieldCount).sort((a, b) => b[1] - a[1])) {
+                logger.progress("MIGRASI", `  ${String(count).padStart(4)}x  issue : ${field}`);
+            }
+        }
+
+        logger.progress("MIGRASI", "getSheetData selesai. Data dikirim ke UI.");
 
         return successResponse(res, 200, "Data sheet berhasil diambil", {
             sheet: sheetName,
@@ -696,9 +768,26 @@ const importRow = async (req, res) => {
             return errorResponse(res, 400, "payload dengan no_lp wajib dikirim");
         }
 
+        // ── Log detail payload yang akan diimpor ─────────────────────
+        logger.section(`MIGRASI importRow — No LP: "${payload.no_lp}"`);
+        logger.sub("Payload yang diterima");
+        logger.table([
+            ["no_lp",          payload.no_lp],
+            ["polres_id",      payload.polres_id],
+            ["tanggal_laka",   payload.tanggal_laka],
+            ["tanggal_lp",     payload.tanggal_lp],
+            ["kecamatan_id",   payload.kecamatan_id],
+            ["kelurahan_id",   payload.kelurahan_id],
+            ["laka_tunggal",   String(payload.laka_tunggal) + " (" + typeof payload.laka_tunggal + ")"],
+            ["rumah_sakit_id", payload.rumah_sakit_id],
+            ["jumlah korban",  Array.isArray(payload.korban) ? payload.korban.length : 0],
+            ["jumlah kendaraan", Array.isArray(payload.kendaraan) ? payload.kendaraan.length : 0],
+        ]);
+
         // Validasi field wajib
         const missing = getMissingFields(payload);
         if (missing.length > 0) {
+            logger.warn(`Import DITOLAK — field wajib kosong: ${missing.join(", ")}`);
             return errorResponse(
                 res,
                 400,
@@ -706,8 +795,7 @@ const importRow = async (req, res) => {
             );
         }
 
-        // Cek duplikat berbasis (no_lp + polres_id): No LP boleh sama di polres
-        // berbeda, tetapi tidak boleh sama persis pada polres yang sama.
+        // Cek duplikat berbasis (no_lp + polres_id)
         const existing = await LaporanPolisi.findOne({
             where: {
                 no_lp: String(payload.no_lp).trim(),
@@ -717,6 +805,7 @@ const importRow = async (req, res) => {
             attributes: ["id"],
         });
         if (existing) {
+            logger.warn(`Import DITOLAK — duplikat: No LP "${payload.no_lp}" sudah ada (ID #${existing.id}) di polres ${payload.polres_id}`);
             return errorResponse(
                 res,
                 409,
@@ -724,15 +813,23 @@ const importRow = async (req, res) => {
             );
         }
 
+        logger.progress("MIGRASI", `Menyimpan ke DB — laka_tunggal=${payload.laka_tunggal} ...`);
         const laporan = await insertLaporanPayload(payload, req);
-        logger.progress("MIGRASI", `Import OK — LP "${payload.no_lp}" (polres ${payload.polres_id}) → id #${laporan.id}, ${Array.isArray(payload.korban) ? payload.korban.length : 0} korban`);
+
+        logger.separator();
+        logger.sub("Import berhasil");
+        logger.table([
+            ["ID laporan baru", laporan.id],
+            ["No LP",          payload.no_lp],
+            ["Polres ID",       payload.polres_id],
+            ["laka_tunggal",   String(payload.laka_tunggal)],
+            ["Korban disimpan", Array.isArray(payload.korban) ? payload.korban.length : 0],
+        ]);
 
         const result = await LaporanPolisi.findByPk(laporan.id);
-
         return successResponse(res, 201, "Baris berhasil diimpor ke database", result);
     } catch (error) {
         logger.error("Import row error", error);
-        // Sertakan pesan error asli agar penyebab kegagalan terlihat di UI
         const detail =
             error?.errors?.[0]?.message ||
             error?.parent?.sqlMessage ||
