@@ -79,6 +79,24 @@ function isSaneYmd(y, m, d) {
     return true;
 }
 
+// Resolves 2-digit year ke 4-digit yang paling masuk akal untuk konteks data laka.
+// Data kecelakaan lalu lintas tidak mungkin terjadi di masa depan, sehingga
+// jika "20xx" hasilnya LEBIH dari tahun sekarang, dianggap salah parse
+// dan dikembalikan ke tahun sekarang.
+// Contoh (sekarang 2026):
+//   "24" → 2024 ≤ 2026 → 2024 ✅ (data lampau, wajar)
+//   "25" → 2025 ≤ 2026 → 2025 ✅
+//   "26" → 2026 ≤ 2026 → 2026 ✅
+//   "27" → 2027 > 2026 → 2026 ✅ (fix! bukan 2027)
+//   "28" → 2028 > 2026 → 2026 ✅ (fix! bukan 2028)
+function resolve2DigitYear(yy) {
+    const currentYear = new Date().getFullYear();
+    const candidate = 2000 + parseInt(yy, 10);
+    // Data laka tidak boleh dari masa depan → clamp ke tahun sekarang
+    if (candidate <= currentYear) return String(candidate);
+    return String(currentYear);
+}
+
 function formatDate(dateStr) {
     if (!dateStr) return null;
 
@@ -90,7 +108,7 @@ function formatDate(dateStr) {
         const day = match[1].padStart(2, "0");
         const month = match[2].padStart(2, "0");
         let year = match[3];
-        if (year.length === 2) year = "20" + year;
+        if (year.length === 2) year = resolve2DigitYear(year);
         return isSaneYmd(year, month, day) ? `${year}-${month}-${day}` : null;
     }
 
@@ -107,7 +125,7 @@ function formatDate(dateStr) {
         const monthName = match[2].toLowerCase().substring(0, 3);
         const month = monthMap[monthName];
         let year = match[3];
-        if (year.length === 2) year = "20" + year;
+        if (year.length === 2) year = resolve2DigitYear(year);
         if (month && isSaneYmd(year, month, day)) return `${year}-${month}-${day}`;
         return null;
     }
