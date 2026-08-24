@@ -311,15 +311,21 @@ function mapGroupToPayload(group, master, forcedPolresId = null) {
         kecamatan_id: kecamatanId,
         kelurahan_id: kelurahanId,
         lokasi_laka: laporan.lokasi_laka || "",
-        // laka_tunggal = true jika kolom boolean di sheet TRUE,
-        // ATAU jika ada korban yang tindak_lanjutnya "Laka Tunggal"
-        // (menangani inkonsistensi sheet: kolom boolean sering dikosongkan/FALSE
-        //  padahal tindak lanjut korban sudah ditulis "Laka Tunggal")
+        // laka_tunggal = true jika salah satu kondisi terpenuhi:
+        //   1. Kolom boolean laka_tunggal di sheet bernilai TRUE
+        //   2. Ada korban dengan tindak_lanjut = "Laka Tunggal"
+        //      (inkonsistensi sheet: kolom boolean sering dibiarkan FALSE)
+        //   3. kasus_tabrakan = "Menabrak Pjk" (tabrakan ke objek diam = laka tunggal)
+        //   4. Nama korban mengandung "(TUNGGAL)" (petugas menulis TUNGGAL di nama)
         laka_tunggal:
             laporan.laka_tunggal === "TRUE" ||
             laporan.laka_tunggal === "true" ||
             group.korban.some((k) =>
                 (k.tindak_lanjut || "").toString().toLowerCase().trim() === "laka tunggal"
+            ) ||
+            (laporan.kasus_tabrakan || "").toString().toLowerCase().trim() === "menabrak pjk" ||
+            group.korban.some((k) =>
+                (k.nama || "").toUpperCase().includes("(TUNGGAL)")
             ),
         kasus_tabrak_kecelakaan_id: kasusTabrakId,
         faktor_penyebab_laka_id: faktorPenyebabId,
