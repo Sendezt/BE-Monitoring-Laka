@@ -363,6 +363,7 @@ function mapGroupToPayload(group, master, forcedPolresId = null) {
 
             const rsSendiriText = k.rs_sendiri || laporan.rs_sendiri;
             const rsLainText = k.rs_lain || laporan.rs_lain;
+            // rs_sendiri → cari di DB master sebagai rumah_sakit_id
             let rumahSakitId = lookupId(rumahSakitPool, rsSendiriText);
             if (!rumahSakitId && forcedWilayahId && rsSendiriText) {
                 rumahSakitId = lookupId(master.rumahSakit, rsSendiriText);
@@ -370,6 +371,7 @@ function mapGroupToPayload(group, master, forcedPolresId = null) {
             if (!rumahSakitId && rsSendiriText) {
                 issues.push({ field: "rumah_sakit", value: rsSendiriText });
             }
+            // rs_lain → langsung simpan sebagai teks RS luar wilayah
 
             return {
                 nama: k.nama,
