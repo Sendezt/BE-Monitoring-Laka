@@ -361,12 +361,14 @@ function mapGroupToPayload(group, master, forcedPolresId = null) {
             const jenisJaminanId = lookupId(master.jenisJaminan, k.jenis_jaminan);
             const keterjaminanId = lookupId(master.keterjaminan, k.keterjaminan);
 
-            let rumahSakitId = lookupId(rumahSakitPool, k.rs_sendiri);
-            if (!rumahSakitId && forcedWilayahId && k.rs_sendiri) {
-                rumahSakitId = lookupId(master.rumahSakit, k.rs_sendiri);
+            const rsSendiriText = k.rs_sendiri || laporan.rs_sendiri;
+            const rsLainText = k.rs_lain || laporan.rs_lain;
+            let rumahSakitId = lookupId(rumahSakitPool, rsSendiriText);
+            if (!rumahSakitId && forcedWilayahId && rsSendiriText) {
+                rumahSakitId = lookupId(master.rumahSakit, rsSendiriText);
             }
-            if (!rumahSakitId && k.rs_sendiri) {
-                issues.push({ field: "rumah_sakit", value: k.rs_sendiri });
+            if (!rumahSakitId && rsSendiriText) {
+                issues.push({ field: "rumah_sakit", value: rsSendiriText });
             }
 
             return {
@@ -385,7 +387,7 @@ function mapGroupToPayload(group, master, forcedPolresId = null) {
                 keterjaminan_nama: nameById(master.keterjaminan, keterjaminanId),
                 rumah_sakit_id: rumahSakitId,
                 rumah_sakit_nama: nameById(master.rumahSakit, rumahSakitId),
-                rumah_sakit_wilayah: k.rs_lain || null,
+                rumah_sakit_wilayah: rsLainText || null,
             };
         }),
     };
